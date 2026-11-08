@@ -991,7 +991,7 @@ export function AnalysisReportPage() {
                 <Button type="button" variant="outline" size="sm" onClick={() => setTriageFinding(null)}>
                   Cancel
                 </Button>
-                <Button type="submit" variant="default" size="sm" isLoading={isSubmittingTriage} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                <Button type="submit" variant="primary" size="sm" isLoading={isSubmittingTriage} className="bg-indigo-600 hover:bg-indigo-700 text-white">
                   Save Triage Feedback
                 </Button>
               </div>
