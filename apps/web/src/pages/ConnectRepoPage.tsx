@@ -164,7 +164,7 @@ export function ConnectRepoPage() {
               </p>
             </div>
             <Button
-              variant="default"
+              variant="primary"
               size="sm"
               onClick={() => navigate('/github/connect')}
               icon={<Github className="w-3.5 h-3.5" />}
