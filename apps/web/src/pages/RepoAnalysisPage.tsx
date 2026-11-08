@@ -164,7 +164,7 @@ export function RepoAnalysisPage() {
           </div>
 
           <Button
-            variant="default"
+            variant="primary"
             size="md"
             onClick={handleRunAnalysis}
             isLoading={isAnalyzing}
@@ -223,7 +223,7 @@ export function RepoAnalysisPage() {
             </div>
           </div>
           <Button
-            variant="default"
+            variant="primary"
             size="sm"
             onClick={() => navigate(`/analysis/reports/${completedReportId}`)}
             icon={<ArrowRight className="w-4 h-4" />}
