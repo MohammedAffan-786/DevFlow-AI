@@ -29,13 +29,12 @@ import {
 export function TestExecutionPage() {
   const [searchParams] = useSearchParams();
   const repoId = searchParams.get('repoId') || 'repo_1';
-  const framework = (searchParams.get('framework') as 'vitest' | 'jest' | 'pytest') || 'vitest';
 
   const [isRunning, setIsRunning] = useState(false);
   const [activeTab, setActiveTab] = useState<'results' | 'errors' | 'report' | 'history'>('results');
 
   // Test File from Session Storage or Default Demo
-  const [testFile, setTestFile] = useState<any>(() => {
+  const [testFile] = useState<any>(() => {
     const saved = sessionStorage.getItem('active_test_file');
     if (saved) {
       try {
@@ -182,7 +181,7 @@ export function TestExecutionPage() {
         </div>
 
         <Button
-          variant="default"
+          variant="primary"
           size="md"
           onClick={handleRunExecution}
           isLoading={isRunning}
@@ -537,7 +536,7 @@ export function TestExecutionPage() {
               </div>
 
               <Button
-                variant="default"
+                variant="primary"
                 size="sm"
                 onClick={handleCompare}
                 className="bg-indigo-600 hover:bg-indigo-700 text-white h-9"

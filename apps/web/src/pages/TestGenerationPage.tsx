@@ -4,18 +4,12 @@ import { apiRequest } from '../lib/api';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { Badge } from '../components/ui/Badge';
 import { CodeBlock } from '../components/ui/CodeBlock';
 import {
   FlaskConical,
   Sparkles,
-  Terminal,
   Play,
-  CheckCircle2,
   AlertCircle,
-  Cpu,
-  Layers,
-  ShieldCheck,
   FileCode2,
   ChevronDown,
   ChevronUp,
@@ -25,7 +19,7 @@ export function TestGenerationPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  const [repositoryId, setRepositoryId] = useState(searchParams.get('repoId') || 'repo_1');
+  const repositoryId = searchParams.get('repoId') || 'repo_1';
   const [filePath, setFilePath] = useState('src/services/billingService.ts');
   const [functionName, setFunctionName] = useState('calculateProratedAmount');
   const [targetFramework, setTargetFramework] = useState<'vitest' | 'jest' | 'pytest'>('vitest');
@@ -238,7 +232,7 @@ export function TestGenerationPage() {
 
               <Button
                 type="submit"
-                variant="default"
+                variant="primary"
                 isLoading={isLoading}
                 icon={<Sparkles className="w-4 h-4" />}
                 className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
@@ -264,7 +258,7 @@ export function TestGenerationPage() {
                   </span>
                 </div>
                 <Button
-                  variant="default"
+                  variant="primary"
                   size="sm"
                   onClick={handleExecuteInSandbox}
                   icon={<Play className="w-3.5 h-3.5" />}
