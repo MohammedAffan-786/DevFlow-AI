@@ -274,7 +274,7 @@ export function PullRequestsPage() {
       case 'CHANGES_REQUESTED':
         return <Badge variant="warning" size="sm">CHANGES REQUESTED</Badge>;
       case 'APPROVED_WITH_SUGGESTIONS':
-        return <Badge variant="default" size="sm">APPROVED WITH SUGGESTIONS</Badge>;
+        return <Badge variant="primary" size="sm">APPROVED WITH SUGGESTIONS</Badge>;
       case 'CLEAN':
         return <Badge variant="success" size="sm">CLEAN / ALL CHECKS PASSED</Badge>;
       default:
@@ -314,7 +314,7 @@ export function PullRequestsPage() {
             Webhooks ({webhookEvents.length})
           </Button>
           <Button
-            variant="default"
+            variant="primary"
             size="sm"
             onClick={handleTriggerReview}
             isLoading={isReviewing}
@@ -424,7 +424,7 @@ export function PullRequestsPage() {
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
                   <div>
                     <div className="flex flex-wrap items-center gap-2 mb-2">
-                      <Badge variant="default" size="sm">PR #{currentPr.prNumber}</Badge>
+                      <Badge variant="primary" size="sm">PR #{currentPr.prNumber}</Badge>
                       <Badge variant="success" size="sm">{currentPr.state}</Badge>
                       <span className="text-xs font-bold text-slate-500">{currentPr.repositoryId?.fullName}</span>
                       {currentReview && getVerdictBadge(currentReview.verdict)}
@@ -453,7 +453,7 @@ export function PullRequestsPage() {
                   {/* GitHub Publishing Actions */}
                   <div className="flex flex-col items-end gap-2 flex-shrink-0">
                     <Button
-                      variant="default"
+                      variant="primary"
                       size="sm"
                       onClick={handlePublishComments}
                       isLoading={isPublishing}
