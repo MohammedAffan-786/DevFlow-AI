@@ -187,7 +187,7 @@ export function ComparisonPage() {
             />
           </div>
           <Button
-            variant="default"
+            variant="primary"
             size="sm"
             onClick={fetchComparison}
             isLoading={isLoading}
