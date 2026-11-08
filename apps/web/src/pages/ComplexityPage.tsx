@@ -131,7 +131,7 @@ for (const tx of transactions) {
 
               <Button
                 type="submit"
-                variant="default"
+                variant="primary"
                 className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
                 isLoading={isLoading}
                 icon={<BarChart3 className="w-4 h-4" />}
