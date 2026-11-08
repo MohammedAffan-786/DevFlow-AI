@@ -1,0 +1,39 @@
+# ==============================================================================
+# Multi-Stage Production Build: Job Processor Worker
+# ==============================================================================
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+RUN npm install -g pnpm
+
+COPY package.json pnpm-workspace.yaml ./
+COPY packages/shared/package.json ./packages/shared/
+COPY workers/job-processor/package.json ./workers/job-processor/
+
+RUN pnpm install --frozen-lockfile
+
+COPY packages/shared ./packages/shared
+COPY workers/job-processor ./workers/job-processor
+
+RUN pnpm --filter @devflow/shared build && \
+    pnpm --filter @devflow/job-processor build
+
+# Production Runner Stage
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+ENV NODE_ENV=production
+
+RUN addgroup -g 10001 -S devflow && \
+    adduser -u 10001 -S devflow -G devflow
+
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/packages/shared/package.json ./packages/shared/
+COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
+COPY --from=builder /app/workers/job-processor/package.json ./workers/job-processor/
+COPY --from=builder /app/workers/job-processor/dist ./workers/job-processor/dist
+COPY --from=builder /app/node_modules ./node_modules
+
+USER devflow:devflow
+
+CMD ["node", "workers/job-processor/dist/index.js"]

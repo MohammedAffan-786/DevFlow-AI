@@ -1,0 +1,43 @@
+# ==============================================================================
+# Multi-Stage Production Build: Web Frontend (Vite + React + Nginx)
+# ==============================================================================
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+RUN npm install -g pnpm
+
+COPY package.json pnpm-workspace.yaml ./
+COPY packages/shared/package.json ./packages/shared/
+COPY apps/web/package.json ./apps/web/
+
+RUN pnpm install --frozen-lockfile
+
+COPY packages/shared ./packages/shared
+COPY apps/web ./apps/web
+
+RUN pnpm --filter @devflow/shared build && \
+    pnpm --filter @devflow/web build
+
+# Hardened Nginx Production Runner Stage
+FROM nginx:1.25-alpine AS runner
+
+# Remove default nginx config
+RUN rm /etc/nginx/conf.d/default.conf
+
+# Copy custom hardened nginx configuration
+COPY docker/prod/nginx.conf /etc/nginx/conf.d/devflow.conf
+
+# Copy built assets
+COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
+
+# Run nginx as non-root
+RUN touch /var/run/nginx.pid && \
+    chown -R nginx:nginx /var/run/nginx.pid /var/cache/nginx /usr/share/nginx/html
+
+USER nginx
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost:80/ || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]

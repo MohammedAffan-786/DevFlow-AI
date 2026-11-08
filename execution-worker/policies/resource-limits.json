@@ -1,0 +1,16 @@
+{
+  "limits": {
+    "memoryBytes": 536870912,
+    "memorySwapBytes": 536870912,
+    "nanoCpus": 500000000,
+    "pidsLimit": 64,
+    "timeoutMs": 30000,
+    "networkDisabled": true,
+    "readOnlyRootfs": true,
+    "user": "10001:10001"
+  },
+  "storage": {
+    "tmpfsMount": "/tmp",
+    "tmpfsSize": "64m"
+  }
+}

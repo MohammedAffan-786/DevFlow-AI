@@ -1,0 +1,20 @@
+FROM node:20-alpine
+
+WORKDIR /workspace
+
+RUN npm install -g pnpm tsx
+
+COPY package.json pnpm-workspace.yaml ./
+COPY packages/shared/package.json ./packages/shared/
+COPY apps/api/package.json ./apps/api/
+
+RUN pnpm install --filter @devflow/shared --filter @devflow/api
+
+COPY packages/shared ./packages/shared
+COPY apps/api ./apps/api
+
+WORKDIR /workspace/apps/api
+
+EXPOSE 4000
+
+CMD ["pnpm", "dev"]

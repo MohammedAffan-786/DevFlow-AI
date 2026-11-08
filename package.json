@@ -1,0 +1,35 @@
+{
+  "name": "devflow-ai",
+  "version": "1.0.0",
+  "description": "Production-grade autonomous AI software engineering and security analysis platform",
+  "private": true,
+  "author": "DevFlow AI Team",
+  "license": "MIT",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "workers/job-processor"
+  ],
+  "scripts": {
+    "dev": "concurrently \"pnpm:dev:*\"",
+    "client": "pnpm --filter @devflow/shared build && pnpm --filter @devflow/web dev",
+    "server": "pnpm --filter @devflow/shared build && pnpm --filter @devflow/api dev",
+    "dev:api": "pnpm --filter @devflow/api dev",
+    "dev:web": "pnpm --filter @devflow/web dev",
+    "dev:worker": "pnpm --filter @devflow/job-processor dev",
+    "dev:sandbox": "pnpm --filter @devflow/execution-engine dev",
+    "build": "pnpm --filter \"@devflow/*\" build",
+    "lint": "pnpm --filter \"@devflow/*\" lint",
+    "test": "pnpm --filter \"@devflow/*\" test",
+    "clean": "pnpm --filter \"@devflow/*\" clean"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "prettier": "^3.2.5",
+    "typescript": "^5.4.5"
+  },
+  "engines": {
+    "node": ">=20.11.0",
+    "pnpm": ">=8.15.0"
+  }
+}

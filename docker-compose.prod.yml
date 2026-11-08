@@ -1,0 +1,185 @@
+version: '3.8'
+
+# ==============================================================================
+# DevFlow AI: Enterprise Production Stack
+# High availability, network isolation, non-root execution, and resource limits
+# ==============================================================================
+
+networks:
+  frontend-net:
+    driver: bridge
+  backend-net:
+    driver: bridge
+  sandbox-net:
+    driver: bridge
+    internal: true # Air-gapped network for container sandboxes (zero outbound egress)
+
+volumes:
+  mongodb_prod_data:
+  redis_prod_data:
+  sandbox_tmp_data:
+
+services:
+  # ─── Reverse Proxy & Static Web Host ─────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: docker/prod/Dockerfile.web
+    container_name: devflow-prod-web
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - frontend-net
+      - backend-net
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  # ─── Core API Monolith & Orchestrator ─────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: docker/prod/Dockerfile.api
+    container_name: devflow-prod-api
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - MONGO_URI=mongodb://mongodb:27017/devflow?replicaSet=rs0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - AI_SERVICE_URL=http://ai-service:8000
+      - AI_SERVICE_INTERNAL_KEY=${AI_SERVICE_INTERNAL_KEY}
+      - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - GITHUB_APP_ID=${GITHUB_APP_ID}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET}
+      - GITHUB_PRIVATE_KEY=${GITHUB_PRIVATE_KEY}
+    networks:
+      - backend-net
+      - sandbox-net
+    ports:
+      - "4000:4000"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:4000/health/live"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2048M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "10"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ─── Python AI Microservice (FastAPI + LLM Connectors) ──────────────────────
+  ai-service:
+    build:
+      context: ./services/ai
+      dockerfile: Dockerfile
+    container_name: devflow-prod-ai
+    restart: always
+    environment:
+      - ENVIRONMENT=production
+      - PORT=8000
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - INTERNAL_API_KEY=${AI_SERVICE_INTERNAL_KEY}
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2048M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "30m"
+        max-file: "5"
+
+  # ─── State Store: MongoDB Cluster ───────────────────────────────────────────
+  mongodb:
+    image: mongo:7.0
+    container_name: devflow-prod-mongodb
+    restart: always
+    command: ["--replSet", "rs0", "--bind_ip_all", "--wiredTigerCacheSizeGB", "1.5"]
+    environment:
+      MONGO_REPLICA_SET_NAME: rs0
+    volumes:
+      - mongodb_prod_data:/data/db
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "try { rs.status().ok } catch(e) { rs.initiate().ok }"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 3072M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # ─── Queue Broker & Cache Store: Redis ──────────────────────────────────────
+  redis:
+    image: redis:7.2-alpine
+    container_name: devflow-prod-redis
+    restart: always
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-strong_redis_password_prod}"]
+    volumes:
+      - redis_prod_data:/data
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-strong_redis_password_prod}", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"

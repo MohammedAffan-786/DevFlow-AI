@@ -1,0 +1,25 @@
+{
+  "name": "@devflow/job-processor",
+  "version": "1.0.0",
+  "description": "Distributed BullMQ worker fleet for GitHub webhooks, diff fetching, and PR reviews",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts"
+  },
+  "dependencies": {
+    "@devflow/shared": "workspace:*",
+    "@octokit/rest": "^20.1.0",
+    "bullmq": "^5.7.1",
+    "dotenv": "^16.4.5",
+    "ioredis": "^5.3.2",
+    "mongoose": "^8.2.4",
+    "winston": "^3.12.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "tsx": "^4.7.1",
+    "typescript": "^5.4.5"
+  }
+}
