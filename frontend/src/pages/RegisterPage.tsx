@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
+import { useAuth } from '../contexts/AuthContext';
+import { Button } from '../components/Button';
+import { Input } from '../components/Input';
 import { Github, AlertCircle, ArrowRight } from 'lucide-react';
+import { apiRequest } from '../services/api';
 
 export function RegisterPage() {
   const { register } = useAuth();
@@ -16,6 +17,20 @@ export function RegisterPage() {
   const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGitHubLoading, setIsGitHubLoading] = useState(false);
+
+  const handleGitHubSignup = async () => {
+    setError(null);
+    setIsGitHubLoading(true);
+    try {
+      const { url } = await apiRequest<{ url: string }>('/auth/github/url');
+      if (!url) throw new Error('GitHub authorization URL was not returned.');
+      window.location.assign(url);
+    } catch (err: any) {
+      setError(err.message || 'GitHub authentication could not be started.');
+      setIsGitHubLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,9 +91,8 @@ export function RegisterPage() {
         variant="outline"
         className="w-full h-11 border-slate-300 dark:border-slate-800"
         icon={<Github className="w-4 h-4" />}
-        onClick={() => {
-          navigate('/login');
-        }}
+        isLoading={isGitHubLoading}
+        onClick={handleGitHubSignup}
       >
         Sign up with GitHub
       </Button>

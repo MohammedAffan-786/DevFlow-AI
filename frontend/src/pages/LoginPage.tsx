@@ -1,20 +1,27 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { Github, AlertCircle, ArrowRight, Check } from 'lucide-react';
-import { apiRequest } from '../lib/api';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { Button } from '../components/Button';
+import { Input } from '../components/Input';
+import { Github, AlertCircle, ArrowRight } from 'lucide-react';
+import { apiRequest } from '../services/api';
 
 export function LoginPage() {
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
-  const [loginInput, setLoginInput] = useState('alex.dev@acme.com');
-  const [password, setPassword] = useState('Password123!');
+  const [loginInput, setLoginInput] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isGitHubLoading, setIsGitHubLoading] = useState(false);
+
+  useEffect(() => {
+    const authError = searchParams.get('auth_error');
+    if (authError) setError(`GitHub sign-in failed (${authError.replaceAll('_', ' ')}).`);
+    if (searchParams.get('auth') === 'success' && user) navigate('/dashboard', { replace: true });
+  }, [navigate, searchParams, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,15 +51,8 @@ export function LoginPage() {
     setIsGitHubLoading(true);
     try {
       const data = await apiRequest<{ url: string }>('/auth/github/url');
-      if (data && data.url) {
-        // In real environment, redirect to GitHub OAuth
-        // For development test flow, exchange mock token directly
-        await apiRequest('/auth/github/callback', {
-          method: 'POST',
-          body: JSON.stringify({ code: 'demo_github_oauth_code' }),
-        });
-        navigate('/dashboard');
-      }
+      if (!data?.url) throw new Error('GitHub authorization URL was not returned.');
+      window.location.assign(data.url);
     } catch (err: any) {
       setError('GitHub authentication failed: ' + (err.message || 'OAuth error'));
     } finally {
@@ -139,16 +139,6 @@ export function LoginPage() {
       </form>
 
       {/* Demo Credentials Tip */}
-      <div className="p-3 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/60 text-xs text-indigo-700 dark:text-indigo-300 flex items-start gap-2">
-        <Check className="w-4 h-4 mt-0.5 text-indigo-500 flex-shrink-0" />
-        <div>
-          <span className="font-bold">Pre-configured Demo Account:</span>
-          <div className="mt-0.5 font-mono text-[11px] text-slate-600 dark:text-slate-400">
-            alex.dev@acme.com / Password123!
-          </div>
-        </div>
-      </div>
-
       <div className="text-center text-xs text-slate-500 dark:text-slate-400">
         Don&apos;t have an account?{' '}
         <Link to="/register" className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">

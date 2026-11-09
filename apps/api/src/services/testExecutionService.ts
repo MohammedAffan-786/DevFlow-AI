@@ -21,7 +21,6 @@
  */
 
 import crypto from 'crypto';
-import Docker from 'dockerode';
 import {
   TestExecutionResultDTO,
   SandboxSecuritySpec,
@@ -30,6 +29,10 @@ import {
   TestReportDTO,
   GeneratedTestFile,
 } from '@devflow/shared';
+
+// Docker is only needed when a test suite is executed. Load the optional
+// sandbox client then, so auth and other API routes can start without Docker.
+type Docker = any;
 
 export interface ExecuteTestSuiteOptions {
   runId?: string;
@@ -71,7 +74,8 @@ export async function executeTestInSandbox(
   let isDockerAvailable = false;
 
   try {
-    docker = new Docker({ socketPath: process.env.DOCKER_SOCKET || '/var/run/docker.sock' });
+    const { default: DockerClient } = await import('dockerode');
+    docker = new DockerClient({ socketPath: process.env.DOCKER_SOCKET || '/var/run/docker.sock' });
     await docker.ping();
     isDockerAvailable = true;
   } catch {
@@ -98,7 +102,7 @@ async function runInsideDockerContainer(
   const imageName = isPython ? 'devflow/python-runner:latest' : 'devflow/node-runner:latest';
   const containerName = `devflow_sandbox_${runId.replace(/-/g, '').slice(0, 16)}`;
 
-  let container: Docker.Container | null = null;
+  let container: any = null;
   let isTimedOut = false;
   let exitCode = 1;
   let stdout = '';

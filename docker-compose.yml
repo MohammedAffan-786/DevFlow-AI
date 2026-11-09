@@ -52,6 +52,9 @@ services:
       - PORT=8000
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - LLM_PROVIDER=${LLM_PROVIDER:-openai}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-6-astra}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-sonnet-5}
       - INTERNAL_API_KEY=${AI_SERVICE_INTERNAL_KEY:-development_secret_key}
     volumes:
       - ./ai-service:/app

@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/server.js",
-    "dev": "tsx watch src/server.ts",
+    "dev": "node dev.cjs",
     "test": "tsx tests/run-all.ts",
     "lint": "eslint src --ext .ts"
   },

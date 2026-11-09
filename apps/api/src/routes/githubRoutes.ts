@@ -188,7 +188,9 @@ router.get('/repositories', async (req: Request, res: Response) => {
     res.status(200).json({ success: true, data: { repositories: repos, total: repos.length } });
   } catch (err) {
     console.error('[GitHubRoutes] listRepositories error:', err);
-    res.status(500).json({ success: false, error: 'Failed to fetch repositories' });
+    const message = err instanceof Error ? err.message : 'Failed to fetch repositories';
+    const status = message.startsWith('No usable GitHub access token') ? 401 : 502;
+    res.status(status).json({ success: false, error: message });
   }
 });
 

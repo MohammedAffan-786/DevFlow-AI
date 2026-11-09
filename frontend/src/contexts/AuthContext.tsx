@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { apiRequest } from '../lib/api';
+import { apiRequest } from '../services/api';
 
 export interface User {
   id: string;
@@ -29,31 +29,13 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Initial fallback user for smooth developer experience if backend is initializing
-const fallbackDemoUser: User = {
-  id: 'usr_demo_alex',
-  email: 'alex.dev@acme.com',
-  username: 'alexdev',
-  displayName: 'Alex Mercer',
-  avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-  role: 'SYSTEM_ADMIN',
-  isEmailVerified: true,
-  githubConnected: true,
-  organization: {
-    id: 'org_acme_corp',
-    name: 'Acme Cloud Technologies',
-    slug: 'acme-corp',
-    role: 'OWNER',
-  },
-};
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('devflow_user');
     if (saved) {
       try { return JSON.parse(saved); } catch {}
     }
-    return fallbackDemoUser;
+    return null;
   });
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -69,10 +51,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem('devflow_user', JSON.stringify(data));
       }
     } catch {
-      // If server unreachable, retain stored or demo user
-      if (!user) {
-        setUser(fallbackDemoUser);
-      }
+      // A failed session check must not authenticate a demo or stale user.
+      setUser(null);
+      localStorage.removeItem('devflow_user');
     } finally {
       setIsLoading(false);
     }
@@ -88,12 +69,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(res.user);
       localStorage.setItem('devflow_user', JSON.stringify(res.user));
     } catch (err) {
-      // If backend offline, allow fallback login for test credentials
-      if (loginInput.toLowerCase().includes('alex') || loginInput.includes('demo')) {
-        setUser(fallbackDemoUser);
-        localStorage.setItem('devflow_user', JSON.stringify(fallbackDemoUser));
-        return;
-      }
       throw err;
     } finally {
       setIsLoading(false);
@@ -110,24 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(res.user);
       localStorage.setItem('devflow_user', JSON.stringify(res.user));
     } catch (err) {
-      // Fallback local registration
-      const newUser: User = {
-        id: `usr_${Date.now()}`,
-        email: payload.email,
-        username: payload.username,
-        displayName: payload.displayName,
-        role: 'USER',
-        isEmailVerified: false,
-        githubConnected: false,
-        organization: {
-          id: `org_${Date.now()}`,
-          name: `${payload.displayName}'s Workspace`,
-          slug: `${payload.username}-workspace`,
-          role: 'OWNER',
-        },
-      };
-      setUser(newUser);
-      localStorage.setItem('devflow_user', JSON.stringify(newUser));
+      throw err;
     } finally {
       setIsLoading(false);
     }

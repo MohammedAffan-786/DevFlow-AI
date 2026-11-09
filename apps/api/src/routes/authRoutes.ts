@@ -263,66 +263,106 @@ router.get('/me', authenticate, async (req: Request, res: Response) => {
   res.status(200).json({ success: true, data: userDTO });
 });
 
+const frontendOrigin = () => {
+  const configuredOrigin = process.env.FRONTEND_URL?.trim();
+  const vercelOrigin = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined;
+  return (configuredOrigin || vercelOrigin || 'http://localhost:5173').replace(/\/$/, '');
+};
+
+const githubCallbackUrl = () => {
+  const configuredOrigin = process.env.API_URL?.trim();
+  const vercelOrigin = process.env.VERCEL ? frontendOrigin() : undefined;
+  const origin = (configuredOrigin || vercelOrigin || 'http://localhost:4000').replace(/\/$/, '');
+  return `${origin}/api/v1/auth/github/callback`;
+};
+
 // GET /api/v1/auth/github/url
 router.get('/github/url', (_req: Request, res: Response) => {
-  const clientId = process.env.GITHUB_CLIENT_ID || 'mock_github_client_id';
-  const redirectUri = encodeURIComponent(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?provider=github`);
+  const clientId = process.env.GITHUB_CLIENT_ID;
+  if (!clientId || !process.env.GITHUB_CLIENT_SECRET) {
+    return res.status(503).json({
+      type: 'https://api.devflow.ai/errors/oauth-not-configured',
+      title: 'GitHub OAuth Not Configured',
+      status: 503,
+      detail: 'GitHub sign-in is unavailable because the server OAuth credentials are not configured.',
+    });
+  }
+  const redirectUri = encodeURIComponent(githubCallbackUrl());
   const scope = encodeURIComponent('read:user user:email repo');
   const state = AuthService.generateRandomToken();
-
+  res.cookie('githubOAuthState', state, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/api/v1/auth/github/callback',
+    maxAge: 10 * 60 * 1000,
+  });
   const url = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&state=${state}`;
-  res.status(200).json({ success: true, data: { url, state } });
+  res.status(200).json({ success: true, data: { url } });
 });
 
-// POST /api/v1/auth/github/callback (Simulated / Live OAuth Exchange)
-router.post('/github/callback', async (req: Request, res: Response) => {
-  const { code } = req.body;
-  if (!code) {
-    return res.status(400).json({
-      type: 'https://api.devflow.ai/errors/bad-request',
-      title: 'Code Required',
-      status: 400,
-      detail: 'GitHub authorization code is required.',
-    });
+// GET /api/v1/auth/github/callback: exchange GitHub's one-time code and establish a session.
+router.get('/github/callback', async (req: Request, res: Response) => {
+  const frontendUrl = frontendOrigin();
+  const fail = (reason: string) => res.redirect(`${frontendUrl}/login?auth_error=${encodeURIComponent(reason)}`);
+  const { code, state, error } = req.query;
+  if (error) return fail('github_denied');
+  if (typeof code !== 'string' || typeof state !== 'string' || !req.cookies?.githubOAuthState || state !== req.cookies.githubOAuthState) {
+    return fail('invalid_oauth_state');
   }
+  res.clearCookie('githubOAuthState', { path: '/api/v1/auth/github/callback' });
 
-  // Find or create GitHub linked user
-  let user = await UserModel.findOne({ githubId: 9876543 });
-  if (!user) {
-    user = await UserModel.create({
-      email: 'octocat@github.dev',
-      username: 'octocat',
-      displayName: 'The Octocat',
-      passwordHash: AuthService.hashPassword(AuthService.generateRandomToken()),
-      avatarUrl: 'https://avatars.githubusercontent.com/u/583231?v=4',
-      githubId: 9876543,
-      githubUsername: 'octocat',
-      isEmailVerified: true,
+  try {
+    const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_id: process.env.GITHUB_CLIENT_ID, client_secret: process.env.GITHUB_CLIENT_SECRET, code, redirect_uri: githubCallbackUrl() }),
     });
+    const tokenData = await tokenResponse.json() as { access_token?: string; error?: string };
+    if (!tokenResponse.ok || !tokenData.access_token) return fail('github_token_exchange_failed');
 
-    const org = await OrganizationModel.create({
-      name: "Octocat's Workspace",
-      slug: 'octocat-workspace',
-      billingEmail: 'octocat@github.dev',
-      plan: 'STARTER',
-    });
+    const headers = { Authorization: `Bearer ${tokenData.access_token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+    const [profileResponse, emailsResponse] = await Promise.all([
+      fetch('https://api.github.com/user', { headers }),
+      fetch('https://api.github.com/user/emails', { headers }),
+    ]);
+    if (!profileResponse.ok || !emailsResponse.ok) return fail('github_profile_fetch_failed');
+    const profile = await profileResponse.json() as { id: number; login: string; name?: string | null; avatar_url?: string };
+    const emails = await emailsResponse.json() as Array<{ email: string; primary: boolean; verified: boolean }>;
+    const email = emails.find((item) => item.primary && item.verified)?.email || emails.find((item) => item.verified)?.email;
+    if (!email) return fail('verified_github_email_required');
 
-    await UserMembershipModel.create({
-      userId: user._id,
-      organizationId: org._id,
-      role: 'OWNER',
-    });
+    let user = await UserModel.findOne({ githubId: profile.id });
+    if (!user) {
+      user = await UserModel.findOne({ email: email.toLowerCase() });
+      if (user) {
+        user.githubId = profile.id;
+        user.githubUsername = profile.login;
+        user.avatarUrl = profile.avatar_url || user.avatarUrl;
+        user.isEmailVerified = true;
+        await user.save();
+      } else {
+        const baseUsername = profile.login.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 25) || `github${profile.id}`;
+        let username = baseUsername;
+        if (await UserModel.exists({ username })) username = `${baseUsername}_${profile.id}`.slice(0, 30);
+        user = await UserModel.create({
+          email: email.toLowerCase(), username,
+          displayName: profile.name?.trim() || profile.login,
+          passwordHash: AuthService.hashPassword(AuthService.generateRandomToken()),
+          avatarUrl: profile.avatar_url, githubId: profile.id, githubUsername: profile.login, isEmailVerified: true,
+        });
+        const slug = `${username.toLowerCase()}-workspace`;
+        const org = await OrganizationModel.create({ name: `${user.displayName}'s Workspace`, slug, billingEmail: email.toLowerCase(), plan: 'FREE' });
+        await UserMembershipModel.create({ userId: user._id, organizationId: org._id, role: 'OWNER' });
+      }
+    }
+
+    AuthService.setAuthCookies(res, AuthService.generateAccessToken(user), AuthService.generateRefreshToken(user));
+    return res.redirect(`${frontendUrl}/login?auth=success`);
+  } catch (err) {
+    console.error('[GitHub OAuth] Callback failed:', err);
+    return fail('github_authentication_failed');
   }
-
-  const accessToken = AuthService.generateAccessToken(user);
-  const refreshToken = AuthService.generateRefreshToken(user);
-  AuthService.setAuthCookies(res, accessToken, refreshToken);
-
-  const userDTO = await AuthService.formatUserDTO(user);
-  res.status(200).json({
-    success: true,
-    data: { user: userDTO, accessToken },
-  });
 });
 
 export default router;

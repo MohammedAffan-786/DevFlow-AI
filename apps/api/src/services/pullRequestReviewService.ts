@@ -211,6 +211,45 @@ export interface ChangedFile {
   content?: string;
 }
 
+async function requestAIReview(files: ChangedFile[]): Promise<Finding[]> {
+  const serviceUrl = (process.env.AI_SERVICE_URL || 'http://localhost:8000').replace(/\/$/, '');
+  const internalKey = process.env.AI_SERVICE_INTERNAL_KEY;
+  const reviewFiles: Array<{ filePath: string; content: string }> = [];
+  let totalChars = 0;
+
+  for (const file of files) {
+    if (!file.content || reviewFiles.length >= 12 || totalChars >= 80000) continue;
+    const content = file.content.slice(0, Math.min(20000, 80000 - totalChars));
+    if (!content.trim()) continue;
+    reviewFiles.push({ filePath: file.filename, content });
+    totalChars += content.length;
+  }
+
+  if (!internalKey || reviewFiles.length === 0) return [];
+
+  try {
+    const response = await fetch(`${serviceUrl}/internal/v1/ai/review`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Service-Key': internalKey,
+      },
+      body: JSON.stringify({ files: reviewFiles }),
+      signal: AbortSignal.timeout(100000),
+    });
+    if (!response.ok) {
+      console.warn(`[PRReviewService] AI review service returned HTTP ${response.status}.`);
+      return [];
+    }
+
+    const result = await response.json() as { findings?: Finding[] };
+    return Array.isArray(result.findings) ? result.findings : [];
+  } catch (err) {
+    console.warn('[PRReviewService] AI review service unavailable; using deterministic findings only.', err);
+    return [];
+  }
+}
+
 async function fetchPullRequestFiles(
   owner: string,
   repo: string,
@@ -280,6 +319,18 @@ export async function runPullRequestAnalysis(
       securityFindings.push(...sec);
       codeQualityFindings.push(...rev);
     }
+  }
+
+  // Add provider-backed findings when the configured AI service is available.
+  const aiFindings = await requestAIReview(files);
+  for (const finding of aiFindings) {
+    const target = finding.category === 'SECURITY' ? securityFindings : codeQualityFindings;
+    const duplicate = [...securityFindings, ...codeQualityFindings].some(
+      (existing) => existing.filePath === finding.filePath &&
+        existing.startLine === finding.startLine &&
+        existing.description.toLowerCase() === finding.description.toLowerCase()
+    );
+    if (!duplicate) target.push(finding);
   }
 
   // 2. Generate unit tests for changed functions

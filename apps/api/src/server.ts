@@ -26,6 +26,7 @@ if (process.env.NODE_ENV === 'production') {
 
 const app = express();
 const PORT = process.env.PORT || 4000;
+const isVercel = Boolean(process.env.VERCEL);
 
 // Reverse Proxy Header Trust (for accurate client IP rate limiting behind ingress/ALB)
 app.set('trust proxy', 1);
@@ -60,7 +61,16 @@ app.use(
 
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: (origin, callback) => {
+      const configured = process.env.FRONTEND_URL;
+      if (!origin) return callback(null, true);
+      if (configured && origin === configured) return callback(null, origin);
+      if (origin.endsWith('.vercel.app')) return callback(null, origin);
+      if (origin === 'http://localhost:5173' || origin === 'http://127.0.0.1:5173') {
+        return callback(null, origin);
+      }
+      return callback(null, configured || 'http://localhost:5173');
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Correlation-ID', 'X-Organization-ID'],
@@ -197,10 +207,17 @@ async function bootstrap() {
       console.log(`[DevFlow API] Database offline or booting; API server will accept requests.`);
     }
 
-    // Initialize BullMQ & Redis Queue Engine
-    await QueueService.init().catch((err) => {
-      console.warn(`[DevFlow API] QueueService initialization warning: ${err.message}`);
-    });
+    // Initialize BullMQ & Redis Queue Engine (skip on Vercel — no local Redis)
+    if (!isVercel) {
+      await QueueService.init().catch((err) => {
+        console.warn(`[DevFlow API] QueueService initialization warning: ${err.message}`);
+      });
+    }
+
+    if (isVercel) {
+      console.log(`[DevFlow API] Vercel function ready (Environment: ${process.env.NODE_ENV || 'development'})`);
+      return;
+    }
 
     const server = app.listen(PORT, () => {
       console.log(`[DevFlow API] Server running on port ${PORT} (Environment: ${process.env.NODE_ENV || 'development'})`);

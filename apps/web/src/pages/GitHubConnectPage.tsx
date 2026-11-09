@@ -145,6 +145,19 @@ export function GitHubConnectPage() {
     }
   };
 
+  const handleReconnectGitHub = async () => {
+    setError(null);
+    try {
+      await apiRequest('/github/oauth/disconnect', { method: 'DELETE' });
+      setIsConnected(false);
+      setGithubLogin(null);
+      setRepositories([]);
+      await handleConnectGitHub();
+    } catch (err: any) {
+      setError(err?.message || 'Could not reset the GitHub connection.');
+    }
+  };
+
   const fetchRepositories = async () => {
     setIsLoadingRepos(true);
     setError(null);
@@ -304,6 +317,14 @@ export function GitHubConnectPage() {
               icon={<RefreshCw className={`w-3 h-3 ${isLoadingRepos ? 'animate-spin' : ''}`} />}
             >
               Refresh
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleReconnectGitHub}
+              className="h-7 text-xs"
+            >
+              Reconnect GitHub
             </Button>
           </div>
         )}

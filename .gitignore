@@ -74,6 +74,9 @@ mongo_data/
 redis_data/
 /backups/
 
+# Vercel
+.vercel
+
 # Operating System & IDE Artifacts
 .DS_Store
 Thumbs.db
@@ -88,3 +91,6 @@ logs/
 # Ephemeral Sandboxes
 tmp/
 /sandbox_tmp/
+
+.vercel
+.env*

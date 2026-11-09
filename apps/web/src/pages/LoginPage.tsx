@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -7,14 +7,21 @@ import { Github, AlertCircle, ArrowRight } from 'lucide-react';
 import { apiRequest } from '../lib/api';
 
 export function LoginPage() {
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [loginInput, setLoginInput] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isGitHubLoading, setIsGitHubLoading] = useState(false);
+
+  useEffect(() => {
+    const authError = searchParams.get('auth_error');
+    if (authError) setError(`GitHub sign-in failed (${authError.replace(/_/g, ' ')}).`);
+    if (searchParams.get('auth') === 'success' && user) navigate('/dashboard', { replace: true });
+  }, [navigate, searchParams, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,15 +51,8 @@ export function LoginPage() {
     setIsGitHubLoading(true);
     try {
       const data = await apiRequest<{ url: string }>('/auth/github/url');
-      if (data && data.url) {
-        // In real environment, redirect to GitHub OAuth
-        // For development test flow, exchange mock token directly
-        await apiRequest('/auth/github/callback', {
-          method: 'POST',
-          body: JSON.stringify({ code: 'demo_github_oauth_code' }),
-        });
-        navigate('/dashboard');
-      }
+      if (!data?.url) throw new Error('GitHub authorization URL was not returned.');
+      window.location.assign(data.url);
     } catch (err: any) {
       setError('GitHub authentication failed: ' + (err.message || 'OAuth error'));
     } finally {

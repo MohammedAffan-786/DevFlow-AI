@@ -54,82 +54,56 @@ export class GitHubService {
 
   // List Accessible Repositories
   static async listUserRepositories(decryptedToken?: string): Promise<any[]> {
-    if (decryptedToken && !decryptedToken.startsWith('mock_')) {
-      try {
-        const octokit = new Octokit({ auth: decryptedToken });
-        const { data } = await octokit.repos.listForAuthenticatedUser({
-          sort: 'updated',
-          per_page: 50,
-          affiliation: 'owner,collaborator,organization_member',
-        });
-        return data.map((repo) => ({
-          githubRepoId: repo.id,
-          name: repo.name,
-          fullName: repo.full_name,
-          htmlUrl: repo.html_url,
-          defaultBranch: repo.default_branch,
-          isPrivate: repo.private,
-          primaryLanguage: repo.language || 'TypeScript',
-          description: repo.description,
-          stars: repo.stargazers_count,
-          updatedAt: repo.updated_at,
-        }));
-      } catch (err) {
-        console.warn('[GitHubService] Remote listUserRepositories failed; falling back to simulated repos', err);
-      }
+    if (!decryptedToken || decryptedToken.startsWith('mock_')) {
+      throw new Error('No usable GitHub access token is stored. Disconnect and reconnect your GitHub account.');
     }
 
-    // Default enterprise catalog
-    return [
-      {
-        githubRepoId: 8941201,
-        name: 'payment-gateway',
-        fullName: 'acme/payment-gateway',
-        htmlUrl: 'https://github.com/acme/payment-gateway',
-        defaultBranch: 'main',
-        isPrivate: true,
-        primaryLanguage: 'TypeScript',
-        description: 'PCI-compliant payment transaction orchestration service',
-        stars: 42,
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        githubRepoId: 8941202,
-        name: 'auth-service',
-        fullName: 'acme/auth-service',
-        htmlUrl: 'https://github.com/acme/auth-service',
-        defaultBranch: 'main',
-        isPrivate: true,
-        primaryLanguage: 'Python',
-        description: 'OAuth2 / OIDC token issuer & user credential management',
-        stars: 18,
-        updatedAt: new Date(Date.now() - 3600000 * 5).toISOString(),
-      },
-      {
-        githubRepoId: 8941203,
-        name: 'analytics-pipeline',
-        fullName: 'acme/analytics-pipeline',
-        htmlUrl: 'https://github.com/acme/analytics-pipeline',
-        defaultBranch: 'main',
-        isPrivate: false,
-        primaryLanguage: 'TypeScript',
-        description: 'Real-time event streaming and metrics aggregation pipeline',
-        stars: 87,
-        updatedAt: new Date(Date.now() - 3600000 * 24).toISOString(),
-      },
-      {
-        githubRepoId: 8941204,
-        name: 'notification-service',
-        fullName: 'acme/notification-service',
-        htmlUrl: 'https://github.com/acme/notification-service',
-        defaultBranch: 'main',
-        isPrivate: true,
-        primaryLanguage: 'TypeScript',
-        description: 'Transactional email, SMS, and in-app webhook dispatcher',
-        stars: 12,
-        updatedAt: new Date(Date.now() - 3600000 * 48).toISOString(),
-      },
-    ];
+    try {
+      const octokit = new Octokit({ auth: decryptedToken });
+      const { data } = await octokit.repos.listForAuthenticatedUser({
+        sort: 'updated',
+        per_page: 50,
+        affiliation: 'owner,collaborator,organization_member',
+      });
+      return data.map((repo) => ({
+        githubRepoId: repo.id,
+        name: repo.name,
+        fullName: repo.full_name,
+        htmlUrl: repo.html_url,
+        defaultBranch: repo.default_branch,
+        isPrivate: repo.private,
+        primaryLanguage: repo.language || 'TypeScript',
+        description: repo.description,
+        stars: repo.stargazers_count,
+        updatedAt: repo.updated_at,
+      }));
+    } catch (err) {
+      const githubError = err as {
+        status?: number;
+        message?: string;
+        response?: {
+          data?: { message?: string };
+          headers?: Record<string, string | undefined>;
+        };
+      };
+      const status = githubError.status;
+      const apiMessage = githubError.response?.data?.message;
+      console.warn('[GitHubService] GitHub repository request failed.', {
+        status,
+        message: githubError.message,
+        apiMessage,
+        requestId: githubError.response?.headers?.['x-github-request-id'],
+      });
+      if (status === 401) {
+        throw new Error('GitHub rejected the saved access token. Disconnect and reconnect your GitHub account.');
+      }
+      if (status === 403) {
+        throw new Error('GitHub denied repository access. Reconnect and grant repository access; organization repositories may also require organization approval.');
+      }
+      throw new Error(
+        `Could not load repositories from GitHub${status ? ` (HTTP ${status})` : ''}${apiMessage ? `: ${apiMessage}` : ''}. Check the API server connection and logs.`
+      );
+    }
   }
 
   // List Branches for Repository
