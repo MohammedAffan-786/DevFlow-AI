@@ -19,7 +19,7 @@
     "dev:web": "pnpm --filter @devflow/web dev",
     "dev:worker": "pnpm --filter @devflow/job-processor dev",
     "dev:sandbox": "pnpm --filter @devflow/execution-engine dev",
-    "build": "pnpm --filter \"@devflow/*\" build",
+    "build": "pnpm --filter @devflow/shared build && pnpm --filter \"@devflow/*\" build",
     "lint": "pnpm --filter @devflow/shared build && pnpm --filter \"@devflow/*\" lint",
     "test": "pnpm --filter \"@devflow/*\" test",
     "clean": "pnpm --filter \"@devflow/*\" clean"
