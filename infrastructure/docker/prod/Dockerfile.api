@@ -4,19 +4,21 @@
 FROM node:20-alpine AS builder
 
 WORKDIR /app
+RUN apk add --no-cache python3 make g++
+ENV npm_config_nodedir=/usr/local
 RUN npm install -g pnpm
 
-COPY package.json pnpm-workspace.yaml ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY packages/shared/package.json ./packages/shared/
 COPY apps/api/package.json ./apps/api/
 
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --prod=false --frozen-lockfile
 
 COPY packages/shared ./packages/shared
 COPY apps/api ./apps/api
 
-RUN pnpm --filter @devflow/shared build && \
-    pnpm --filter @devflow/api build
+RUN pnpm exec tsc -p packages/shared/tsconfig.json && \
+    pnpm exec tsc -p apps/api/tsconfig.json
 
 # Production Runner Stage
 FROM node:20-alpine AS runner

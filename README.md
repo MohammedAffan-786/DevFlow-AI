@@ -215,6 +215,14 @@ docker build -t devflow-sandbox-python:latest -f docker/sandboxes/python-runner/
 docker build -t devflow-sandbox-node:latest -f docker/sandboxes/node-runner/Dockerfile .
 ```
 
+After the API is running with access to the Docker socket, verify the Node sandbox with:
+
+```bash
+pnpm --filter @devflow/api smoke:sandbox
+```
+
+The Compose API service mounts `/var/run/docker.sock`; set `DOCKER_GID` to the socket's group ID on Linux hosts so the non-root API user can access it. The API process can control the host Docker daemon, so only enable this mount for a trusted deployment.
+
 ### Step 5: Start All Microservices in Development Mode
 
 Open separate terminals or run via root orchestration script:

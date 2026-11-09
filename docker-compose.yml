@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # ============================================================================
   # Core State Stores
@@ -72,8 +70,12 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=4000
+      - DOCKER_HOST=${DOCKER_HOST:-unix:///var/run/docker.sock}
+      - DOCKER_SOCKET=${DOCKER_SOCKET:-}
       - MONGO_URI=mongodb://mongodb:27017/devflow?replicaSet=rs0
       - REDIS_URL=redis://redis:6379
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
       - AI_SERVICE_URL=http://ai-service:8000
       - AI_SERVICE_INTERNAL_KEY=${AI_SERVICE_INTERNAL_KEY:-development_secret_key}
       - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET:-dev_jwt_access_secret_super_secure_32bytes}
@@ -86,7 +88,10 @@ services:
     volumes:
       - ./backend:/workspace/backend
       - ./apps/api:/workspace/apps/api
+      - /workspace/apps/api/node_modules
       - ./packages/shared:/workspace/packages/shared
+      - /workspace/packages/shared/node_modules
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       mongodb:
         condition: service_healthy

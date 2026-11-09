@@ -8,6 +8,7 @@
     "start": "node dist/server.js",
     "dev": "node dev.cjs",
     "test": "node --require ./tests/node-compat.cjs ./node_modules/tsx/dist/cli.mjs tests/run-all.ts",
+    "smoke:sandbox": "node ./tests/sandbox-smoke.cjs",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

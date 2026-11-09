@@ -11,7 +11,9 @@ ENV NODE_ENV=test \
 WORKDIR /workspace
 
 # Install minimal test runner tooling
-RUN npm install -g vitest@1.4.0 typescript@5.4.5 @types/node@20.11.0
+RUN npm install -g vitest@1.4.0 jest@29.7.0 ts-jest@29.2.5 @jest/globals@29.7.0 typescript@5.4.5 @types/node@20.11.0
+
+ENV NODE_PATH=/usr/local/lib/node_modules
 
 # Create unprivileged sandbox user and group (UID/GID 10001)
 RUN addgroup -g 10001 -S sandboxgroup && \

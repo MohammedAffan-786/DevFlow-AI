@@ -5,6 +5,7 @@ import { runGitHubIntegrationTests } from './github-integration.test.ts';
 import { runAIValidationTests } from './ai-validation.test.ts';
 import { runQueueTests } from './queue-processing.test.ts';
 import { runSandboxIsolationTests } from './sandbox-isolation.test.ts';
+import { runSandboxExecutionTests } from './sandbox-execution.test.ts';
 
 async function main() {
   console.log('================================================================');
@@ -19,6 +20,7 @@ async function main() {
     { title: 'AI Schema Output Validation', runner: runAIValidationTests },
     { title: 'Queue Processing & Deduplication', runner: runQueueTests },
     { title: 'Sandbox Hardening & Container Isolation', runner: runSandboxIsolationTests },
+    { title: 'Sandbox Test Execution & Generated Imports', runner: runSandboxExecutionTests },
   ];
 
   let totalTests = 0;
