@@ -12,21 +12,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v4
+      - name: Setup pnpm and Node.js
+        uses: pnpm/setup@v3
         with:
-          node-version: 20
-          cache: 'pnpm'
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 8
-
-      - name: Install Dependencies
-        run: pnpm install --frozen-lockfile
+          version: 12.18.0
+          runtime: node@20
+          cache: true
+          require-lockfile: true
 
       - name: Typecheck Shared Package
         run: pnpm --filter @devflow/shared build
@@ -39,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: TruffleHog Secrets Scanner
         uses: trufflesecurity/trufflehog@main
@@ -58,20 +52,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v4
+      - name: Setup pnpm and Node.js
+        uses: pnpm/setup@v3
         with:
-          node-version: 20
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 8
-
-      - name: Install Dependencies
-        run: pnpm install --frozen-lockfile
+          version: 12.18.0
+          runtime: node@20
+          cache: true
+          require-lockfile: true
 
       - name: Build Shared Types
         run: pnpm --filter @devflow/shared build
