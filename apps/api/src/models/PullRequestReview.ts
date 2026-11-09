@@ -93,8 +93,8 @@ const PullRequestReviewSchema = new Schema<IPullRequestReview>(
         patch: { type: String },
       },
     ],
-    securityFindings: { type: [Schema.Types.Mixed], default: [] },
-    codeQualityFindings: { type: [Schema.Types.Mixed], default: [] },
+    securityFindings: { type: [Schema.Types.Mixed], default: [] } as any,
+    codeQualityFindings: { type: [Schema.Types.Mixed], default: [] } as any,
     testExecution: {
       status: { type: String, enum: ['PASSED', 'FAILED', 'SKIPPED', 'TIMED_OUT'], default: 'SKIPPED' },
       totalTests: { type: Number, default: 0 },

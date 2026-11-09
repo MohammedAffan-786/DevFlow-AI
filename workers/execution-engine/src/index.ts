@@ -55,7 +55,7 @@ const executionWorker = new Worker<SandboxExecutionJobPayload>(
         HostConfig: {
           NetworkMode: 'none',
           Memory: 256 * 1024 * 1024, // 256MB memory cap
-          NanoCPUs: 1_000_000_000, // 1.0 vCPU hard limit
+          NanoCpus: 1_000_000_000, // 1.0 vCPU hard limit
           PidsLimit: 64, // Fork bomb protection
           ReadonlyRootfs: true, // Read-only root filesystem
           Tmpfs: {

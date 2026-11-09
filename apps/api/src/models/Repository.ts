@@ -18,6 +18,7 @@ export interface IRepository extends Document {
     generateTestsAutomatically: boolean;
     targetTestFramework: 'jest' | 'vitest' | 'pytest';
     ignoredPaths: string[];
+    autoPublishComments: boolean;
   };
   lastScannedAt?: Date;
   isDeleted: boolean;
@@ -43,6 +44,7 @@ const RepositorySchema = new Schema<IRepository>(
       generateTestsAutomatically: { type: Boolean, default: false },
       targetTestFramework: { type: String, enum: ['jest', 'vitest', 'pytest'], default: 'vitest' },
       ignoredPaths: { type: [String], default: ['node_modules', 'dist', '.git'] },
+      autoPublishComments: { type: Boolean, default: false },
     },
     lastScannedAt: { type: Date, default: null },
     isDeleted: { type: Boolean, default: false, index: true },

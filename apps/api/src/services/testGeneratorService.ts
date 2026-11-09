@@ -343,3 +343,23 @@ ${allCases.map((c) => '  ' + c.code.split('\n').join('\n  ')).join('\n\n')}
     fullCode,
   };
 }
+
+export class TestGeneratorService {
+  static generateTestsForFile(
+    filePath: string,
+    sourceCode: string,
+    language: string,
+    options: Partial<GenerateTestOptions> = {}
+  ): GeneratedTestFile {
+    const normalizedLanguage = language.toLowerCase() === 'python' ? 'python' : 'typescript';
+    const targetFramework = options.targetFramework || (normalizedLanguage === 'python' ? 'pytest' : 'vitest');
+    const generationOptions: GenerateTestOptions = {
+      ...options,
+      filePath,
+      sourceCode,
+      targetFramework,
+    };
+    const functions = extractFunctions(sourceCode, normalizedLanguage);
+    return assembleTestFile(generationOptions, functions);
+  }
+}

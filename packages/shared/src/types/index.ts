@@ -85,6 +85,7 @@ export interface UserDTO {
 
 export interface Finding {
   findingId: string;
+  ruleId?: string;
   filePath: string;
   startLine: number;
   endLine: number;
@@ -135,26 +136,16 @@ export interface CodeExplanationResult {
     inputs: string[];
     outputs: string;
   }>;
+  functionExplanations: Array<{ name: string; lineRange: string; explanation: string }>;
+  inputOutput: { inputs: string[]; outputs: string[]; sideEffects: string[] };
   inputsAndOutputs: Array<{
     name: string;
     type: string;
     description: string;
   }>;
-  dependencies: Array<{
-    name: string;
-    type: string;
-    purpose: string;
-  }>;
-  potentialProblems: Array<{
-    issue: string;
-    impact: string;
-    severity: string;
-  }>;
-  improvementSuggestions: Array<{
-    suggestion: string;
-    benefit: string;
-    codeSnippet?: string;
-  }>;
+  dependencies: string[];
+  potentialProblems: string[];
+  improvementSuggestions: string[];
 }
 
 export interface ComplexityAnalysisResult {
@@ -166,17 +157,16 @@ export interface ComplexityAnalysisResult {
   explanation: string;
   inefficientLoops: Array<{
     line: number;
-    type: string;
-    description: string;
+    code: string;
+    reason: string;
   }>;
-  optimizationSuggestions: Array<{
-    title: string;
-    explanation: string;
+  optimizationSuggestions: string[];
+  beforeAfterComparison: {
+    beforeComplexity: string;
+    afterComplexity: string;
     beforeCode: string;
     afterCode: string;
-    timeComplexityBefore: string;
-    timeComplexityAfter: string;
-  }>;
+  };
   distinctionNote: string;
 }
 

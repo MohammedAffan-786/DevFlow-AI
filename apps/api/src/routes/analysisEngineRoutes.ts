@@ -74,10 +74,10 @@ router.post(
       repoName = (repository.name as string) || nameFromFullName || 'demo';
 
       const fileTree = await getRepositoryTree(repoOwner, repoName, branch, githubToken);
-      rawTree = fileTree.map((node: Record<string, unknown>) => ({
-        path: node.path as string,
-        type: (node.type === 'dir' ? 'tree' : 'blob') as 'blob' | 'tree',
-        size: node.size as number | undefined,
+      rawTree = fileTree.map((node) => ({
+        path: node.path,
+        type: node.type,
+        size: node.size,
       }));
     } catch (err) {
       console.error('[AnalysisEngineRoutes] Failed to prepare repository analysis:', err);

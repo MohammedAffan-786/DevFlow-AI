@@ -119,7 +119,7 @@ export function NotificationsPage() {
     return true;
   });
 
-  const getNotificationIcon = (type: string, severity?: string) => {
+  const getNotificationIcon = (type: string, _severity?: string) => {
     switch (type) {
       case 'CRITICAL_SECURITY':
       case 'SECURITY_ALERT':

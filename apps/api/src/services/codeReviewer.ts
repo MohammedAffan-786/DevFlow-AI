@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { Finding, SeverityLevel, FindingCategory, EvidenceStatus } from '@devflow/shared';
-import { ScannedFile } from './fileScanner';
+import { FileScanner, ScannedFile } from './fileScanner';
 
 interface CodeReviewRule {
   id: string;
@@ -160,6 +160,7 @@ export class CodeReviewer {
 
         findings.push({
           findingId: `cr_${crypto.randomUUID().substring(0, 8)}`,
+          ruleId: rule.id,
           filePath: file.path,
           startLine,
           endLine,
@@ -178,4 +179,23 @@ export class CodeReviewer {
 
     return findings;
   }
+
+  static reviewFiles(files: Array<{ filePath?: string; path?: string; content?: string }>): Finding[] {
+    return files.flatMap((file) => {
+      const filePath = file.filePath || file.path;
+      return filePath && typeof file.content === 'string' ? reviewFile(filePath, file.content) : [];
+    });
+  }
+}
+
+export function reviewFile(filePath: string, content: string): Finding[] {
+  const file: ScannedFile = {
+    path: filePath,
+    name: filePath.split('/').pop() || filePath,
+    content,
+    language: FileScanner.detectLanguage(filePath),
+    sizeBytes: Buffer.byteLength(content, 'utf8'),
+    lineCount: content.split('\n').length,
+  };
+  return CodeReviewer.reviewFile(file);
 }

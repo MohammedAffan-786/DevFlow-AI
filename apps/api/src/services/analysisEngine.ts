@@ -8,11 +8,12 @@
  */
 
 import crypto from 'crypto';
+import { Finding } from '@devflow/shared';
 import { AnalysisReportModel } from '../models/AnalysisReport';
 import { AnalysisRunModel } from '../models/AnalysisRun';
 import { RepositoryModel } from '../models/Repository';
 import { processFileTree, ScanInventory } from './fileScanner';
-import { scanFile, fromManifestFindings, Finding } from './securityScanner';
+import { scanFile, fromManifestFindings } from './securityScanner';
 import { reviewFile } from './codeReviewer';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -275,6 +276,32 @@ export async function runFullAnalysis(
   onProgress?.({ phase: 'DONE', filesProcessed: totalFiles, totalFiles });
 
   return reportId;
+}
+
+export class AnalysisEngine {
+  static analyzeRepository(input: {
+    repositoryId: string;
+    branch?: string;
+    commitSha?: string;
+    fileTree?: RawFileNode[];
+    fileContents?: Record<string, string>;
+    userId?: string;
+  }): Promise<Record<string, unknown>> {
+    return runFullAnalysis({
+      repositoryId: input.repositoryId,
+      branch: input.branch || 'main',
+      commitSha: input.commitSha,
+      fileTree: input.fileTree || [],
+      fileContents: input.fileContents || {},
+      userId: input.userId || '',
+    }).then(async (reportId) => {
+      const report = await AnalysisReportModel.findOne({ reportId }).lean().catch(() => null);
+      return {
+        reportId,
+        overallScore: report?.overallScore ?? 0,
+      };
+    });
+  }
 }
 
 // ─── Recommendation generator ────────────────────────────────────────────────

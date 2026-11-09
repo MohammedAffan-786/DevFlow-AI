@@ -266,3 +266,5 @@ export class FileScanner {
     }
   }
 }
+
+export const processFileTree = FileScanner.processFileTree.bind(FileScanner);

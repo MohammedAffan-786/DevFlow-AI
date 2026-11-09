@@ -8,7 +8,8 @@
   "workspaces": [
     "apps/*",
     "packages/*",
-    "workers/job-processor"
+    "workers/job-processor",
+    "workers/execution-engine"
   ],
   "scripts": {
     "dev": "concurrently \"pnpm:dev:*\"",

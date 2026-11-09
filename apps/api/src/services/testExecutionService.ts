@@ -89,6 +89,37 @@ export async function executeTestInSandbox(
   }
 }
 
+export class TestExecutionService {
+  static executeTestSuite(input: {
+    language?: string;
+    testCode: string;
+    sourceCode: string;
+    timeoutMs?: number;
+    repositoryId?: string;
+    commitSha?: string;
+  }) {
+    const isPython = input.language?.toLowerCase() === 'python';
+    const language = isPython ? 'python' : 'typescript';
+    const framework = isPython ? 'pytest' : 'vitest';
+    const fileName = isPython ? 'test_generated.py' : 'generated.spec.ts';
+    return executeTestInSandbox({
+      repositoryId: input.repositoryId || 'local',
+      commitSha: input.commitSha || 'unknown',
+      sourceCode: input.sourceCode,
+      timeoutSeconds: input.timeoutMs ? Math.ceil(input.timeoutMs / 1000) : undefined,
+      testFile: {
+        fileName,
+        filePath: `tests/${fileName}`,
+        targetFilePath: 'source',
+        language,
+        framework,
+        testCases: [],
+        fullCode: input.testCode,
+      },
+    });
+  }
+}
+
 // ─── Real Docker Sandbox Execution ───────────────────────────────────────────
 
 async function runInsideDockerContainer(
@@ -144,7 +175,7 @@ async function runInsideDockerContainer(
       setTimeout(() => resolve({ isTimeout: true }), timeoutMs)
     );
 
-    const waitPromise = container.wait().then((data) => ({
+    const waitPromise = container.wait().then((data: { StatusCode: number }) => ({
       isTimeout: false,
       statusCode: data.StatusCode,
     }));

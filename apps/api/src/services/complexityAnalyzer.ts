@@ -115,8 +115,12 @@ export class ComplexityAnalyzer {
       estimatedTimeComplexity,
       estimatedSpaceComplexity,
       explanation,
-      inefficientLoops: inefficientLoops.map(l => ({ line: l.line, code: `Loop at line ${l.line}`, reason: l.description })),
-      optimizationSuggestions: optimizationSuggestions.map(s => `${s.title}: ${s.explanation}`),
+      inefficientLoops: inefficientLoops.map((loop) => ({
+        line: loop.line,
+        code: `Loop at line ${loop.line}`,
+        reason: loop.description,
+      })),
+      optimizationSuggestions: optimizationSuggestions.map((suggestion) => `${suggestion.title}: ${suggestion.explanation}`),
       beforeAfterComparison: {
         beforeComplexity: primaryOpt.timeComplexityBefore,
         afterComplexity: primaryOpt.timeComplexityAfter,

@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { Finding, SeverityLevel, FindingCategory, EvidenceStatus } from '@devflow/shared';
-import { ScannedFile, DependencyAuditFinding } from './fileScanner';
+import { FileScanner, ScannedFile, DependencyAuditFinding } from './fileScanner';
 
 interface SecurityRule {
   id: string;
@@ -196,6 +196,7 @@ export class SecurityScanner {
 
         findings.push({
           findingId: `sec_${crypto.randomUUID().substring(0, 8)}`,
+          ruleId: rule.id,
           filePath: file.path,
           startLine,
           endLine,
@@ -215,6 +216,13 @@ export class SecurityScanner {
     }
 
     return findings;
+  }
+
+  static scanFiles(files: Array<{ filePath?: string; path?: string; content?: string }>): Finding[] {
+    return files.flatMap((file) => {
+      const filePath = file.filePath || file.path;
+      return filePath && typeof file.content === 'string' ? scanFile(filePath, file.content) : [];
+    });
   }
 
   // Convert dependency manifest CVEs into standard Security Findings
@@ -238,3 +246,17 @@ export class SecurityScanner {
     }));
   }
 }
+
+export function scanFile(filePath: string, content: string): Finding[] {
+  const file: ScannedFile = {
+    path: filePath,
+    name: filePath.split('/').pop() || filePath,
+    content,
+    language: FileScanner.detectLanguage(filePath),
+    sizeBytes: Buffer.byteLength(content, 'utf8'),
+    lineCount: content.split('\n').length,
+  };
+  return SecurityScanner.scanFile(file);
+}
+
+export const fromManifestFindings = SecurityScanner.fromManifestFindings.bind(SecurityScanner);

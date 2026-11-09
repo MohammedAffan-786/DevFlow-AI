@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "tsx watch src/index.ts"
+    "dev": "node --require ./dev.cjs ./node_modules/tsx/dist/cli.mjs watch src/index.ts"
   },
   "dependencies": {
     "@devflow/shared": "workspace:*",

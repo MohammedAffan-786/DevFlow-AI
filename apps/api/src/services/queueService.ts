@@ -338,10 +338,10 @@ export class QueueService {
       // Notification
       if (record.userId) {
         await NotificationService.notifyAnalysisCompleted(
-          record.userId.toString(),
           record.repositoryId?.toString() || 'Repository',
+          result?.overallScore || 85,
           jobId,
-          result?.overallScore || 85
+          record.userId.toString()
         );
       }
     } catch (err: any) {
@@ -383,6 +383,9 @@ export class QueueService {
           repositoryId: payload.repositoryId,
           commitSha: payload.commitSha,
           branch: payload.branch,
+          fileTree: payload.fileTree || [],
+          fileContents: payload.fileContents || {},
+          userId: payload.userId,
         });
         await this.updateProgress(jobId, 80, 'Aggregating security and quality scores');
         await this.updateProgress(jobId, 100, 'Analysis completed');
@@ -391,7 +394,7 @@ export class QueueService {
 
       case 'AI_CODE_REVIEW': {
         await this.updateProgress(jobId, 25, 'Constructing contextual AST and code segments');
-        const findings = await CodeReviewer.reviewFiles(payload.files || [], payload.repositoryContext || {});
+        const findings = CodeReviewer.reviewFiles(payload.files || []);
         await this.updateProgress(jobId, 90, 'Filtering false-positives with prompt guidelines');
         await this.updateProgress(jobId, 100, 'AI Code Review completed');
         return { findings };
@@ -434,9 +437,10 @@ export class QueueService {
       case 'PULL_REQUEST_REVIEW': {
         await this.updateProgress(jobId, 20, 'Fetching pull-request diff and changed files');
         const review = await PullRequestReviewService.processPullRequest({
-          repositoryId: payload.repositoryId,
-          pullNumber: payload.pullNumber,
+          deliveryId: payload.deliveryId || jobId,
+          event: payload.event || 'pull_request',
           prData: payload.prData,
+          githubToken: payload.token,
         });
         await this.updateProgress(jobId, 85, 'Generating line-level comments and security verdicts');
         await this.updateProgress(jobId, 100, 'Pull request review published');
@@ -491,10 +495,9 @@ export class QueueService {
       // Dispatch alert notification
       if (record.userId) {
         await NotificationService.notifyJobFailed(
-          record.userId.toString(),
-          jobId,
-          record.type,
-          err?.message || 'Worker processing error'
+          `${record.type} (${jobId})`,
+          err?.message || 'Worker processing error',
+          record.userId.toString()
         );
       }
 

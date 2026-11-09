@@ -200,6 +200,22 @@ export async function processPullRequestWebhook(
   }
 }
 
+export class PullRequestReviewService {
+  static processPullRequest(input: {
+    deliveryId?: string;
+    event?: string;
+    prData: unknown;
+    githubToken?: string;
+  }): Promise<ProcessWebhookResult> {
+    return processPullRequestWebhook(
+      input.deliveryId || crypto.randomUUID(),
+      input.event || 'pull_request',
+      input.prData,
+      input.githubToken
+    );
+  }
+}
+
 // ─── Fetch Changed Files via Octokit ─────────────────────────────────────────
 
 export interface ChangedFile {

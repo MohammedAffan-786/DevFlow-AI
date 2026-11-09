@@ -168,7 +168,10 @@ export class DeveloperAnalyticsService {
       const latestReport = await AnalysisReportModel.findOne(filter).sort({ createdAt: -1 }).lean();
       if (latestReport) {
         const fileMap = new Map<string, { total: number; critical: number; high: number; category: string }>();
-        const allFindings = [...(latestReport.securityFindings || []), ...(latestReport.codeReviewFindings || [])];
+        const allFindings = [
+          ...(latestReport.securityFindings || []),
+          ...(latestReport.codeReviewFindings || []),
+        ] as Array<{ filePath?: string; category?: string; severity?: string }>;
 
         for (const f of allFindings) {
           const path = f.filePath || 'src/index.ts';

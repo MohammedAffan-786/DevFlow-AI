@@ -69,16 +69,18 @@ export class ExplanationEngine {
       : `Provides a self-contained operational unit for business execution, abstracting data transformations and external I/O interactions.`;
 
     // Inputs and Outputs
-    const inputsAndOutputs = [
+    const inputsAndOutputs: Array<{ name: string; type: string; description: string; direction: 'INPUT' | 'OUTPUT' }> = [
       {
         name: 'Request / Context Payload',
         type: 'Domain Object or Typed Interface',
         description: 'Input arguments carrying operational parameters, credentials, or entity IDs.',
+        direction: 'INPUT',
       },
       {
         name: 'Return Value',
         type: 'Structured DTO / Promise',
         description: 'Asynchronous Promise resolving to validated domain entities or throwing structured application errors.',
+        direction: 'OUTPUT',
       },
     ];
 
@@ -120,9 +122,9 @@ export class ExplanationEngine {
         outputs: inputsAndOutputs.filter(i => i.direction === 'OUTPUT').map(i => `${i.name}: ${i.description}`),
         sideEffects: ['Computational transformations on provided memory buffer'],
       },
-      dependencies: dependencies.map(d => `${d.name} (${d.type})`),
-      potentialProblems: potentialProblems.map(p => `${p.issue}: ${p.impact}`),
-      improvementSuggestions: improvementSuggestions.map(s => `${s.suggestion}: ${s.benefit}`),
+      dependencies: dependencies.map((dependency) => `${dependency.name} (${dependency.type})`),
+      potentialProblems: potentialProblems.map((problem) => `${problem.issue}: ${problem.impact}`),
+      improvementSuggestions: improvementSuggestions.map((suggestion) => `${suggestion.suggestion}: ${suggestion.benefit}`),
     };
   }
 }

@@ -106,6 +106,19 @@ export class GitHubService {
     }
   }
 
+  static async syncRepository(githubRepoId: string | number, decryptedToken?: string): Promise<any> {
+    const repositories = await this.listUserRepositories(decryptedToken);
+    const repository = repositories.find(
+      (candidate) =>
+        String(candidate.githubRepoId) === String(githubRepoId) ||
+        candidate.fullName === githubRepoId
+    );
+    if (!repository) {
+      throw new Error(`GitHub repository ${githubRepoId} is not accessible to the connected account.`);
+    }
+    return repository;
+  }
+
   // List Branches for Repository
   static async listBranches(owner: string, repo: string, decryptedToken?: string): Promise<GitBranch[]> {
     if (decryptedToken && !decryptedToken.startsWith('mock_')) {

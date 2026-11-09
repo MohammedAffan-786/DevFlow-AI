@@ -2,6 +2,7 @@ packages:
   - 'apps/*'
   - 'packages/*'
   - 'workers/job-processor'
+  - 'workers/execution-engine'
 allowBuilds:
   cpu-features: true
   esbuild: true

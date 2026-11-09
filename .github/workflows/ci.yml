@@ -8,7 +8,7 @@ on:
 
 jobs:
   lint-and-typecheck:
-    name: Lint & Typecheck
+    name: Typecheck & Build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -22,11 +22,11 @@ jobs:
           cache: true
           require-lockfile: true
 
-      - name: Typecheck Shared Package
-        run: pnpm --filter @devflow/shared build
+      - name: Typecheck Workspace
+        run: pnpm run lint
 
-      - name: Lint Workspace
-        run: pnpm run lint || true
+      - name: Build Workspace
+        run: pnpm run build
 
   security-scan:
     name: DevSecOps Security Audit

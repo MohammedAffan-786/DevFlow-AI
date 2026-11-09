@@ -109,7 +109,7 @@ export class AuthService {
         id: org._id.toString(),
         name: org.name,
         slug: org.slug,
-        role: membership.role,
+        role: membership.role === 'DEVELOPER' ? 'MEMBER' : membership.role,
       };
     }
 
