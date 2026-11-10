@@ -17,7 +17,7 @@
     "api": {
       "root": "apps/api",
       "framework": "express",
-      "entrypoint": "dist/server.js",
+      "entrypoint": "src/server.ts",
       "installCommand": "pnpm install --filter @devflow/api... --frozen-lockfile",
       "buildCommand": "pnpm --filter @devflow/shared build && pnpm --filter @devflow/api build",
       "bindings": [
