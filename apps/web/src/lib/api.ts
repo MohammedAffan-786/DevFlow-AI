@@ -30,7 +30,11 @@ export async function apiRequest<T = any>(endpoint: string, options: RequestInit
     const data = isJson ? await response.json() : await response.text();
 
     if (!response.ok) {
-      const message = data?.detail || data?.message || data?.title || data?.error || 'An API error occurred';
+      const message = isJson
+        ? data?.detail || data?.message || data?.title || data?.error || `API request failed (${response.status}).`
+        : response.status === 404
+          ? 'The API is not deployed for this Vercel project. Set the project Root Directory to . and redeploy from main.'
+          : `API request failed (${response.status}).`;
       throw new ApiError(response.status, message, data, data?.invalidParams);
     }
 
