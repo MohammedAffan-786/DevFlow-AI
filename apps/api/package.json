@@ -4,7 +4,7 @@
   "description": "Core Node.js / Express REST API and Orchestrator for DevFlow AI",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc",
+    "build": "pnpm --filter @devflow/shared build && tsc",
     "start": "node dist/server.js",
     "dev": "node dev.cjs",
     "test": "node --require ./tests/node-compat.cjs ./node_modules/tsx/dist/cli.mjs tests/run-all.ts",
