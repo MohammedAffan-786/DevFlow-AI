@@ -15,8 +15,7 @@ export const config = {
   aiService: {
     url: process.env.AI_SERVICE_URL || 'http://localhost:8000',
     internalKey: process.env.AI_SERVICE_INTERNAL_KEY || 'development_secret_key',
-    anthropicKey: process.env.ANTHROPIC_API_KEY || '',
-    openaiKey: process.env.OPENAI_API_KEY || '',
+    olamaKey: process.env.OLAMA_API_KEY || '',
   },
   github: {
     appId: process.env.GITHUB_APP_ID || '',

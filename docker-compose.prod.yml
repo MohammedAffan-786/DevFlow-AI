@@ -106,20 +106,21 @@ services:
   # ─── Python AI Microservice (FastAPI + LLM Connectors) ──────────────────────
   ai-service:
     build:
-      context: ./services/ai
+      context: ./ai-service
       dockerfile: Dockerfile
     container_name: devflow-prod-ai
     restart: always
     environment:
       - ENVIRONMENT=production
       - PORT=8000
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OLAMA_API_KEY=${OLAMA_API_KEY}
+      - OLAMA_MODEL=${OLAMA_MODEL:-qwen3-coder:480b-cloud}
+      - OLAMA_BASE_URL=${OLAMA_BASE_URL:-https://ollama.com}
       - INTERNAL_API_KEY=${AI_SERVICE_INTERNAL_KEY}
     networks:
       - backend-net
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/ready"]
       interval: 20s
       timeout: 5s
       retries: 3

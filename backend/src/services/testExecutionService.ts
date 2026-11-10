@@ -30,6 +30,7 @@ import {
   TestReportDTO,
   GeneratedTestFile,
 } from '@devflow/shared';
+import { assembleTestFile, extractFunctions } from './testGeneratorService';
 
 export interface ExecuteTestSuiteOptions {
   runId?: string;
@@ -106,7 +107,7 @@ async function runInsideDockerContainer(
 
   try {
     // Create hardened, ephemeral container with mandatory security flags
-    container = await docker.createContainer({
+    const createdContainer = await docker.createContainer({
       name: containerName,
       Image: imageName,
       User: DEFAULT_SECURITY_SPEC.runAsUser,
@@ -114,7 +115,7 @@ async function runInsideDockerContainer(
       HostConfig: {
         NetworkMode: 'none',
         Memory: DEFAULT_SECURITY_SPEC.memoryLimitMb * 1024 * 1024,
-        NanoCPUs: DEFAULT_SECURITY_SPEC.cpuLimit * 1_000_000_000,
+        NanoCpus: DEFAULT_SECURITY_SPEC.cpuLimit * 1_000_000_000,
         PidsLimit: DEFAULT_SECURITY_SPEC.pidsLimit,
         ReadonlyRootfs: DEFAULT_SECURITY_SPEC.readonlyRootfs,
         Tmpfs: {
@@ -132,15 +133,16 @@ async function runInsideDockerContainer(
         'PYTHONDONTWRITEBYTECODE=1',
       ],
     });
+    container = createdContainer;
 
-    await container.start();
+    await createdContainer.start();
 
     // Watchdog timer for timeout
     const timeoutPromise = new Promise<{ isTimeout: boolean }>((resolve) =>
       setTimeout(() => resolve({ isTimeout: true }), timeoutMs)
     );
 
-    const waitPromise = container.wait().then((data) => ({
+    const waitPromise = createdContainer.wait().then((data) => ({
       isTimeout: false,
       statusCode: data.StatusCode,
     }));
@@ -151,11 +153,11 @@ async function runInsideDockerContainer(
       isTimedOut = true;
       exitCode = 124; // Standard timeout exit code
       try {
-        await container.kill();
+        await createdContainer.kill();
       } catch {}
     } else {
       exitCode = (result as { statusCode: number }).statusCode;
-      const logs = await container.logs({ stdout: true, stderr: true });
+      const logs = await createdContainer.logs({ stdout: true, stderr: true });
       stdout = logs.toString();
     }
   } catch (err: any) {
@@ -331,4 +333,39 @@ function buildExecutionResultAndReport(
   };
 
   return { execution, report };
+}
+
+export class TestExecutionService {
+  static async executeTestSuite(options: {
+    language?: string;
+    testCode?: string;
+    sourceCode: string;
+    timeoutMs?: number;
+    repositoryId?: string;
+    commitSha?: string;
+  }): Promise<{ execution: TestExecutionResultDTO; report: TestReportDTO }> {
+    const language = options.language === 'python' ? 'python' : 'typescript';
+    const framework = language === 'python' ? 'pytest' : 'vitest';
+    const functions = extractFunctions(options.sourceCode, language);
+    const generatedTestFile = assembleTestFile(
+      {
+        filePath: language === 'python' ? 'source.py' : 'source.ts',
+        sourceCode: options.sourceCode,
+        targetFramework: framework,
+      },
+      functions
+    );
+    const testFile: GeneratedTestFile = {
+      ...generatedTestFile,
+      fullCode: options.testCode || generatedTestFile.fullCode,
+    };
+
+    return executeTestInSandbox({
+      repositoryId: options.repositoryId || '',
+      commitSha: options.commitSha || '',
+      testFile,
+      sourceCode: options.sourceCode,
+      timeoutSeconds: options.timeoutMs === undefined ? undefined : options.timeoutMs / 1000,
+    });
+  }
 }

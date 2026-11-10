@@ -62,9 +62,9 @@ router.post(
     const fileTree = await getRepositoryTree(repoOwner, repoName, branch, githubToken ?? undefined);
 
     // Map to RawFileNode format
-    const rawTree = fileTree.map((node: Record<string, unknown>) => ({
+    const rawTree = fileTree.map((node) => ({
       path: node.path as string,
-      type: (node.type === 'dir' ? 'tree' : 'blob') as 'blob' | 'tree',
+      type: node.type,
       size: node.size as number | undefined,
     }));
 

@@ -1,11 +1,25 @@
 import crypto from 'crypto';
 import { Octokit } from '@octokit/rest';
+import { createAppAuth } from '@octokit/auth-app';
 import { GitBranch, GitCommit, RepoFileNode } from '@devflow/shared';
 
 const ENCRYPTION_KEY = process.env.TOKEN_ENCRYPTION_KEY || 'devflow_encryption_key_32_bytes!'; // 32 bytes for aes-256
 const GCM_IV_LENGTH = 16;
 
 export class GitHubService {
+  static getOctokit(installationId?: number): Octokit {
+    const appId = process.env.GITHUB_APP_ID;
+    const privateKey = process.env.GITHUB_PRIVATE_KEY;
+    if (!appId || !privateKey) {
+      return new Octokit();
+    }
+
+    return new Octokit({
+      authStrategy: createAppAuth,
+      auth: { appId, privateKey, installationId },
+    });
+  }
+
   // AES-256-GCM Token Encryption (Encrypted at rest, never stored plain, never sent to browser)
   static encryptToken(token: string): string {
     const key = crypto.createHash('sha256').update(ENCRYPTION_KEY).digest();
@@ -73,6 +87,7 @@ export class GitHubService {
       } catch (err) {
         console.warn('[GitHubService] Remote listUserRepositories failed; falling back to simulated repos', err);
       }
+
     }
 
     // Default enterprise catalog
@@ -126,6 +141,20 @@ export class GitHubService {
         updatedAt: new Date(Date.now() - 3600000 * 48).toISOString(),
       },
     ];
+  }
+
+  static async syncRepository(githubRepoId: number | string, decryptedToken?: string): Promise<unknown> {
+    const repositories = await this.listUserRepositories(decryptedToken);
+    const repository = repositories.find(
+      (candidate) =>
+        candidate.githubRepoId === Number(githubRepoId) ||
+        candidate.fullName === githubRepoId ||
+        candidate.name === githubRepoId
+    );
+    if (!repository) {
+      throw new Error(`GitHub repository ${githubRepoId} is not accessible`);
+    }
+    return repository;
   }
 
   // List Branches for Repository
@@ -284,3 +313,75 @@ export class GitHubService {
     }
   }
 }
+
+export function getOAuthUrl(userId: string): { url: string; state: string } {
+    const state = crypto.randomBytes(32).toString('hex');
+    return { url: GitHubService.getOAuthUrl(state), state };
+  }
+
+export async function exchangeCodeForToken(
+    code: string
+  ): Promise<{ success: boolean; accessToken?: string; login?: string; error?: string }> {
+    const clientId = process.env.GITHUB_CLIENT_ID;
+    const clientSecret = process.env.GITHUB_CLIENT_SECRET;
+    if (!clientId || !clientSecret) {
+      return { success: false, error: 'GitHub OAuth is not configured' };
+    }
+
+    try {
+      const response = await fetch('https://github.com/login/oauth/access_token', {
+        method: 'POST',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, code }),
+      });
+      const responseBody: unknown = await response.json();
+      if (
+        typeof responseBody !== 'object' ||
+        responseBody === null ||
+        !('access_token' in responseBody) ||
+        typeof responseBody.access_token !== 'string'
+      ) {
+        const error =
+          typeof responseBody === 'object' &&
+          responseBody !== null &&
+          'error_description' in responseBody &&
+          typeof responseBody.error_description === 'string'
+            ? responseBody.error_description
+            : 'GitHub did not return an access token';
+        return { success: false, error };
+      }
+
+      const accessToken = responseBody.access_token;
+      const { data: user } = await new Octokit({ auth: accessToken }).users.getAuthenticated();
+      return { success: true, accessToken, login: user.login };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'GitHub token exchange failed',
+      };
+    }
+  }
+
+export const listUserRepositories = (decryptedToken?: string) =>
+    GitHubService.listUserRepositories(decryptedToken);
+
+export const listBranches = (owner: string, repo: string, decryptedToken?: string) =>
+    GitHubService.listBranches(owner, repo, decryptedToken);
+
+export const getCommitHistory = (
+    owner: string,
+    repo: string,
+    branch = 'main',
+    limit = 15,
+    decryptedToken?: string
+  ) => GitHubService.getCommitHistory(owner, repo, branch, limit, decryptedToken);
+
+export const getRepositoryTree = (
+    owner: string,
+    repo: string,
+    branch = 'main',
+    decryptedToken?: string
+  ) => GitHubService.getRepositoryTree(owner, repo, branch, decryptedToken);
+
+export const encryptToken = (token: string) => GitHubService.encryptToken(token);
+export const decryptToken = (token: string) => GitHubService.decryptToken(token);

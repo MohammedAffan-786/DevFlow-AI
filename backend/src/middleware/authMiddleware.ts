@@ -1,8 +1,8 @@
 import type { Request, Response, NextFunction } from 'express';
-import { AuthService } from '../services/authService.ts';
-import { UserModel, IUser } from '../models/User.ts';
-import { UserMembershipModel, IUserMembership, OrganizationRole } from '../models/UserMembership.ts';
-import { OrganizationModel } from '../models/Organization.ts';
+import { AuthService } from '../services/authService.js';
+import { UserModel, IUser } from '../models/User.js';
+import { UserMembershipModel, IUserMembership, OrganizationRole } from '../models/UserMembership.js';
+import { OrganizationModel } from '../models/Organization.js';
 
 export type Permission =
   | 'MANAGE_BILLING'

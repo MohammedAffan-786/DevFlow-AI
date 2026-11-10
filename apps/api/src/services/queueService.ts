@@ -26,64 +26,125 @@ export class QueueService {
   private static redisConnection: Redis | null = null;
   private static mainQueue: Queue | null = null;
   private static deadLetterQueue: Queue | null = null;
+  private static bullWorker: Worker | null = null;
   private static isInitialized = false;
+  private static isVercel = Boolean(process.env.VERCEL);
   private static activeJobs = new Map<string, boolean>();
 
   /**
    * Initialize BullMQ queues and workers with connection fallback
    */
-  public static async init(): Promise<void> {
-    if (this.isInitialized) return;
+  public static async init(startWorker = !this.isVercel): Promise<void> {
+    if (!this.isInitialized) {
+      const redisUrl = process.env.REDIS_URL;
+      if (this.isVercel && !redisUrl) {
+        throw new Error('REDIS_URL must be configured for Vercel background jobs.');
+      }
 
-    const redisHost = process.env.REDIS_HOST || '127.0.0.1';
-    const redisPort = parseInt(process.env.REDIS_PORT || '6379', 10);
-    const redisPassword = process.env.REDIS_PASSWORD || undefined;
-
-    try {
-      this.redisConnection = new Redis({
-        host: redisHost,
-        port: redisPort,
-        password: redisPassword,
+      const redisOptions = {
         maxRetriesPerRequest: null,
         enableReadyCheck: false,
-        retryStrategy(times) {
-          if (times > 3) return null; // Fall back gracefully if Redis is unavailable
+        retryStrategy(times: number) {
+          if (startWorker) return Math.min(times * 1000, 10000);
+          if (times > 3) return null;
           return Math.min(times * 1000, 3000);
         },
-      });
+      };
 
-      this.redisConnection.on('error', (err) => {
-        console.warn(`[QueueService] Redis connection issue: ${err.message}. Operating in resilient asynchronous mode.`);
-      });
+      try {
+        this.redisConnection = redisUrl
+          ? new Redis(redisUrl, redisOptions)
+          : new Redis({
+              ...redisOptions,
+              host: process.env.REDIS_HOST || '127.0.0.1',
+              port: parseInt(process.env.REDIS_PORT || '6379', 10),
+              password: process.env.REDIS_PASSWORD || undefined,
+            });
 
-      this.mainQueue = new Queue('devflow-jobs', {
-        connection: this.redisConnection,
-        defaultJobOptions: {
-          attempts: 3,
-          backoff: {
-            type: 'exponential',
-            delay: 2000,
+        this.redisConnection.on('error', (err) => {
+          console.warn(`[QueueService] Redis connection issue: ${err.message}. Operating in resilient asynchronous mode.`);
+        });
+
+        this.mainQueue = new Queue('devflow-jobs', {
+          connection: this.redisConnection,
+          defaultJobOptions: {
+            attempts: 3,
+            backoff: {
+              type: 'exponential',
+              delay: 2000,
+            },
+            removeOnComplete: 1000,
+            removeOnFail: 5000,
           },
-          removeOnComplete: 1000,
-          removeOnFail: 5000,
-        },
-      });
+        });
 
-      this.deadLetterQueue = new Queue('devflow-dead-letters', {
-        connection: this.redisConnection,
-      });
+        this.deadLetterQueue = new Queue('devflow-dead-letters', {
+          connection: this.redisConnection,
+        });
 
-      // Start BullMQ Worker if Redis connects
-      this.redisConnection.on('connect', () => {
-        console.log('[QueueService] Connected to Redis. Registering BullMQ background worker.');
-        this.setupBullMQWorker();
-      });
-
-    } catch (err: any) {
-      console.warn(`[QueueService] Redis initialization notice: ${err.message}. Using resilient job execution.`);
+        this.isInitialized = true;
+      } catch (err: any) {
+        if (startWorker) throw err;
+        console.warn(`[QueueService] Redis initialization notice: ${err.message}. Using resilient job execution.`);
+      }
     }
 
-    this.isInitialized = true;
+    if (startWorker && this.redisConnection && !this.bullWorker) {
+      this.redisConnection.on('ready', () => this.setupBullMQWorker());
+      if (this.redisConnection.status === 'ready') {
+        this.setupBullMQWorker();
+      }
+    }
+  }
+
+  public static async close(): Promise<void> {
+    await this.bullWorker?.close();
+    await this.mainQueue?.close();
+    await this.deadLetterQueue?.close();
+
+    if (this.redisConnection && this.redisConnection.status !== 'end') {
+      await this.redisConnection.quit();
+    }
+
+    this.bullWorker = null;
+    this.mainQueue = null;
+    this.deadLetterQueue = null;
+    this.redisConnection = null;
+    this.isInitialized = false;
+  }
+
+  private static async waitForRedisReady(timeoutMs = 5000): Promise<void> {
+    const connection = this.redisConnection;
+    if (!connection) {
+      throw new Error('Redis is not configured for the background queue.');
+    }
+    if (connection.status === 'ready') return;
+    if (connection.status === 'end') {
+      throw new Error('Redis connection ended before the background queue became available.');
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      const cleanup = () => {
+        clearTimeout(timeout);
+        connection.off('ready', onReady);
+        connection.off('end', onEnd);
+      };
+      const onReady = () => {
+        cleanup();
+        resolve();
+      };
+      const onEnd = () => {
+        cleanup();
+        reject(new Error('Redis connection ended before the background queue became available.'));
+      };
+      const timeout = setTimeout(() => {
+        cleanup();
+        reject(new Error('Timed out waiting for the background queue connection.'));
+      }, timeoutMs);
+
+      connection.once('ready', onReady);
+      connection.once('end', onEnd);
+    });
   }
 
   /**
@@ -91,6 +152,7 @@ export class QueueService {
    */
   public static async enqueue(options: EnqueueJobOptions): Promise<{ jobId: string; status: JobStatus; isDuplicate?: boolean }> {
     await this.init();
+    if (this.isVercel) await this.waitForRedisReady();
 
     const priority = options.priority || this.getDefaultPriority(options.type);
     const maxAttempts = options.maxAttempts || 3;
@@ -160,6 +222,15 @@ export class QueueService {
     }
 
     if (!dispatchedToBullMQ) {
+      if (this.isVercel) {
+        record.status = 'FAILED';
+        record.progress.stage = 'Queue unavailable';
+        record.progress.details = 'The background queue is unavailable; configure REDIS_URL and the Vercel job-worker daemon.';
+        record.completedAt = new Date();
+        await record.save();
+        throw new Error(record.progress.details);
+      }
+
       // Execute via resilient async dispatcher (non-blocking)
       setTimeout(() => {
         this.processJobDirectly(jobId, options.type, options.payload, 1, maxAttempts).catch((e) =>
@@ -277,9 +348,9 @@ export class QueueService {
    * Setup BullMQ Worker
    */
   private static setupBullMQWorker(): void {
-    if (!this.redisConnection) return;
+    if (!this.redisConnection || this.bullWorker) return;
 
-    const worker = new Worker(
+    this.bullWorker = new Worker(
       'devflow-jobs',
       async (job: Job) => {
         const { jobId } = job.data;
@@ -292,7 +363,7 @@ export class QueueService {
       }
     );
 
-    worker.on('failed', async (job, err) => {
+    this.bullWorker.on('failed', async (job, err) => {
       if (!job) return;
       await this.handleJobFailure(job.data.jobId, job.attemptsMade, job.opts.attempts || 3, err);
     });

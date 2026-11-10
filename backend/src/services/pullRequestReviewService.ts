@@ -491,3 +491,37 @@ export async function publishReviewToGitHub(
     message: `Published ${allFindings.length} findings as GitHub review comments without unauthorized merge or approve action.`,
   };
 }
+
+export class PullRequestReviewService {
+  static async processPullRequest(input: {
+    repositoryId: string;
+    pullNumber: number;
+    prData?: unknown;
+    githubToken?: string;
+  }): Promise<IPullRequestReview> {
+    const repository = await RepositoryModel.findById(input.repositoryId);
+    if (!repository) {
+      throw new Error(`Repository ${input.repositoryId} was not found`);
+    }
+
+    const pullRequest = await PullRequestModel.findOne({
+      repositoryId: repository._id,
+      prNumber: input.pullNumber,
+    });
+    if (!pullRequest) {
+      throw new Error(`Pull request #${input.pullNumber} was not found`);
+    }
+
+    const [owner, repositoryName] = repository.fullName.split('/');
+    if (!owner || !repositoryName) {
+      throw new Error(`Repository ${repository.fullName} does not have a valid owner/name`);
+    }
+    const files = await fetchPullRequestFiles(
+      owner,
+      repositoryName,
+      input.pullNumber,
+      input.githubToken
+    );
+    return runPullRequestAnalysis(repository, pullRequest, files, input.githubToken);
+  }
+}

@@ -64,6 +64,45 @@ export interface IPullRequestReview extends Document {
   updatedAt: Date;
 }
 
+const SecurityFindingSchema = new Schema(
+  {
+    findingId: { type: String, required: true },
+    filePath: { type: String, required: true },
+    startLine: { type: Number, required: true },
+    endLine: { type: Number, required: true },
+    severity: { type: String, required: true },
+    description: { type: String, required: true },
+    explanation: { type: String, required: true },
+    whyItMatters: { type: String, required: true },
+    suggestedFix: { type: String, required: true },
+    correctedCodeExample: { type: String },
+    cweId: { type: String },
+    owaspCategory: { type: String },
+    confidenceScore: { type: Number, required: true },
+    evidenceStatus: { type: String, required: true },
+  },
+  { _id: false }
+);
+
+const CodeQualityFindingSchema = new Schema(
+  {
+    findingId: { type: String, required: true },
+    filePath: { type: String, required: true },
+    startLine: { type: Number, required: true },
+    endLine: { type: Number, required: true },
+    severity: { type: String, required: true },
+    category: { type: String, required: true },
+    description: { type: String, required: true },
+    explanation: { type: String, required: true },
+    whyItMatters: { type: String, required: true },
+    suggestedFix: { type: String, required: true },
+    correctedCodeExample: { type: String },
+    confidenceScore: { type: Number, required: true },
+    evidenceStatus: { type: String, required: true },
+  },
+  { _id: false }
+);
+
 const PullRequestReviewSchema = new Schema<IPullRequestReview>(
   {
     pullRequestId: { type: Schema.Types.ObjectId, ref: 'PullRequest', required: true, index: true },
@@ -93,8 +132,8 @@ const PullRequestReviewSchema = new Schema<IPullRequestReview>(
         patch: { type: String },
       },
     ],
-    securityFindings: { type: [Schema.Types.Mixed], default: [] },
-    codeQualityFindings: { type: [Schema.Types.Mixed], default: [] },
+    securityFindings: { type: [SecurityFindingSchema], default: [] },
+    codeQualityFindings: { type: [CodeQualityFindingSchema], default: [] },
     testExecution: {
       status: { type: String, enum: ['PASSED', 'FAILED', 'SKIPPED', 'TIMED_OUT'], default: 'SKIPPED' },
       totalTests: { type: Number, default: 0 },

@@ -27,6 +27,7 @@ if (process.env.NODE_ENV === 'production') {
 const app = express();
 const PORT = process.env.PORT || 4000;
 const isVercel = Boolean(process.env.VERCEL);
+let bootstrapPromise: Promise<void> | null = null;
 
 // Reverse Proxy Header Trust (for accurate client IP rate limiting behind ingress/ALB)
 app.set('trust proxy', 1);
@@ -120,6 +121,14 @@ app.get('/health/live', (_req: Request, res: Response) => {
 });
 
 app.get('/health/ready', async (_req: Request, res: Response) => {
+  if (isVercel) {
+    try {
+      await bootstrap();
+    } catch {
+      return res.status(503).json({ status: 'unready', reason: 'Database connection offline' });
+    }
+  }
+
   const isMongoReady = mongoose.connection.readyState === 1;
   if (!isMongoReady) {
     return res.status(503).json({ status: 'unready', reason: 'Database connection offline' });
@@ -148,6 +157,17 @@ app.get('/health/metrics', (_req: Request, res: Response) => {
     },
   });
 });
+
+if (isVercel) {
+  app.use(async (_req: Request, _res: Response, next: NextFunction) => {
+    try {
+      await bootstrap();
+      next();
+    } catch (error) {
+      next(error);
+    }
+  });
+}
 
 // Primary Versioned API Router
 app.use('/api/v1', routes);
@@ -189,15 +209,29 @@ app.use(
 
 // Graceful Lifecycle Management & Auto-Seed
 async function bootstrap() {
+  if (bootstrapPromise) return bootstrapPromise;
+
+  bootstrapPromise = initializeApi();
+  return bootstrapPromise;
+}
+
+async function initializeApi(): Promise<void> {
   try {
-    const mongoUri =
-      process.env.MONGO_URI || 'mongodb://localhost:27017/devflow?directConnection=true';
+    const mongoUri = process.env.MONGO_URI ||
+      (isVercel ? '' : 'mongodb://localhost:27017/devflow?directConnection=true');
+    if (!mongoUri) {
+      throw new Error('MONGO_URI must be configured for the Vercel API.');
+    }
+
     console.log(`[DevFlow API] Connecting to MongoDB: ${mongoUri.replace(/:([^:@]{4})[^:@]*@/, ':$1***@')}`);
     
     // Connect to MongoDB (handles both standalone & replicaSet seamlessly)
-    await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 }).catch((err) => {
+    try {
+      await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 });
+    } catch (err: any) {
+      if (isVercel) throw err;
       console.warn(`[DevFlow API] Initial MongoDB connection warning: ${err.message}. Running in resilient mode.`);
-    });
+    }
 
     if (mongoose.connection.readyState === 1) {
       console.log(`[DevFlow API] MongoDB Connected successfully.`);
@@ -207,7 +241,7 @@ async function bootstrap() {
       console.log(`[DevFlow API] Database offline or booting; API server will accept requests.`);
     }
 
-    // Initialize BullMQ & Redis Queue Engine (skip on Vercel — no local Redis)
+    // Keep Vercel queue consumers in the daemon; the function only dispatches jobs.
     if (!isVercel) {
       await QueueService.init().catch((err) => {
         console.warn(`[DevFlow API] QueueService initialization warning: ${err.message}`);
@@ -226,6 +260,7 @@ async function bootstrap() {
     const gracefulShutdown = async (signal: string) => {
       console.log(`[DevFlow API] Received ${signal}. Commencing graceful teardown...`);
       server.close(async () => {
+        await QueueService.close();
         if (mongoose.connection.readyState === 1) {
           await mongoose.connection.close();
         }
@@ -238,11 +273,12 @@ async function bootstrap() {
     process.on('SIGINT', () => gracefulShutdown('SIGINT'));
   } catch (error) {
     console.error(`[DevFlow API] Fatal bootstrap failure:`, error);
-    process.exit(1);
+    if (!isVercel) process.exit(1);
+    throw error;
   }
 }
 
-if (process.env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV !== 'test' && !isVercel) {
   bootstrap();
 }
 

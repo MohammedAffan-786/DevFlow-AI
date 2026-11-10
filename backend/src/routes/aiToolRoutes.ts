@@ -43,5 +43,3 @@ router.post('/complexity', validate({ body: ComplexityAnalysisSchema }), async (
 });
 
 export default router;
-
-export default router;

@@ -343,3 +343,29 @@ ${allCases.map((c) => '  ' + c.code.split('\n').join('\n  ')).join('\n\n')}
     fullCode,
   };
 }
+
+export class TestGeneratorService {
+  static generateTestsForFile(
+    filePath: string,
+    sourceCode: string,
+    language: string = 'typescript',
+    options: Partial<GenerateTestOptions> = {}
+  ): GeneratedTestFile {
+    const sourceLanguage = language === 'python' ? 'python' : language === 'javascript' ? 'javascript' : 'typescript';
+    const targetFramework = options.targetFramework || (sourceLanguage === 'python' ? 'pytest' : 'vitest');
+    let functions = extractFunctions(sourceCode, sourceLanguage);
+    if (options.functionName) {
+      functions = functions.filter((fn) => fn.name === options.functionName);
+    }
+
+    return assembleTestFile(
+      {
+        ...options,
+        filePath,
+        sourceCode,
+        targetFramework,
+      },
+      functions
+    );
+  }
+}

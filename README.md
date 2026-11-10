@@ -265,8 +265,9 @@ Visit `http://localhost:5173` to access the DevFlow AI Dashboard.
 | `GITHUB_WEBHOOK_SECRET`| Yes | High-entropy string | HMAC verification secret for webhooks. |
 | `AI_SERVICE_URL` | Yes | `http://localhost:8000` | Internal URL to reach Python AI backend. |
 | `AI_SERVICE_INTERNAL_KEY`| Yes | High-entropy string | Shared secret for inter-service auth. |
-| `ANTHROPIC_API_KEY` | Conditional| `sk-ant-...` | Anthropic Claude API Key (if selected). |
-| `OPENAI_API_KEY` | Conditional| `sk-...` | OpenAI API Key (if selected). |
+| `OLAMA_API_KEY` | Yes | Ollama Cloud API key | Authenticates requests to the Ollama API. |
+| `OLAMA_BASE_URL` | No | `https://ollama.com` | Ollama API base URL. |
+| `OLAMA_MODEL` | No | `qwen3-coder:480b-cloud` | Ollama model used for AI code reviews. |
 | `DOCKER_HOST` | No | `unix:///var/run/docker.sock` | Docker socket path for sandbox controller. |
 | `SANDBOX_MAX_CONCURRENCY`| No | `5` | Maximum parallel execution containers. |
 | `SANDBOX_TIMEOUT_MS` | No | `20000` | Hard container execution timeout (20s). |

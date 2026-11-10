@@ -5,6 +5,10 @@ import { TestCaseModel } from '../models/TestSuite';
 import { DashboardStatsDTO } from '@devflow/shared';
 
 export class DashboardService {
+  static async getOverviewMetrics(organizationId?: string): Promise<DashboardStatsDTO> {
+    return this.getStats(organizationId);
+  }
+
   static async getStats(organizationId?: string): Promise<DashboardStatsDTO> {
     const repoFilter = organizationId ? { organizationId, isDeleted: false } : { isDeleted: false };
     

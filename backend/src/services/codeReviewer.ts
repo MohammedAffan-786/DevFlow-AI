@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { Finding, SeverityLevel, FindingCategory, EvidenceStatus } from '@devflow/shared';
-import { ScannedFile } from './fileScanner';
+import { FileScanner, ScannedFile } from './fileScanner';
 
 interface CodeReviewRule {
   id: string;
@@ -178,4 +178,45 @@ export class CodeReviewer {
 
     return findings;
   }
+
+  static reviewFiles(files: unknown[], _repositoryContext?: unknown): Finding[] {
+    return files.flatMap((file) => {
+      const scannedFile = toScannedFile(file);
+      return scannedFile ? this.reviewFile(scannedFile) : [];
+    });
+  }
+}
+
+function toScannedFile(value: unknown): ScannedFile | undefined {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    !('path' in value) ||
+    typeof value.path !== 'string' ||
+    !('content' in value) ||
+    typeof value.content !== 'string'
+  ) {
+    return undefined;
+  }
+
+  const content = value.content;
+  return {
+    path: value.path,
+    name: value.path.split('/').pop() || '',
+    content,
+    language: FileScanner.detectLanguage(value.path),
+    sizeBytes: Buffer.byteLength(content, 'utf8'),
+    lineCount: content ? content.split('\n').length : 1,
+  };
+}
+
+export function reviewFile(filePath: string, content: string): Finding[] {
+  return CodeReviewer.reviewFile({
+    path: filePath,
+    name: filePath.split('/').pop() || '',
+    content,
+    language: FileScanner.detectLanguage(filePath),
+    sizeBytes: Buffer.byteLength(content, 'utf8'),
+    lineCount: content ? content.split('\n').length : 1,
+  });
 }

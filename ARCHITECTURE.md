@@ -106,7 +106,7 @@ DevFlow AI is designed as a **Modular Monolith with Decoupled Compute Microservi
 - **Core Capabilities**:
   - **AST Parsing Engine**: Tree-sitter parsers for Python, JavaScript, and TypeScript to extract functions, classes, import graphs, and cyclomatic complexity metrics.
   - **Prompt Orchestration**: Context window optimizer with token budgeting (tiktoken), sliding window diff chunking, and repository-level context assembly.
-  - **LLM Provider Agnostic Gateway**: Unified interface supporting Anthropic Claude (Claude 3.5 Sonnet), OpenAI (GPT-4o), and local models via Ollama/vLLM.
+  - **Ollama Gateway**: Uses the configured Ollama API base URL, model, and `OLAMA_API_KEY` for code-review inference.
   - **Structured Extraction**: Strict JSON output enforcement using Pydantic models. Guarantees deterministic schema compliance for code findings, CVE mappings, and test cases.
   - **Hallucination Verification**: Deterministic post-processing step checking that flagged line numbers and identifiers actually exist in the supplied source files.
 
@@ -378,9 +378,7 @@ if (!acquired) {
 ```
 
 ### 7.3. LLM Gateway Resilience & Circuit Breaking
-The Python AI service wraps external LLM provider calls in a **Circuit Breaker** pattern:
-- **Exponential Backoff with Jitter**: Handles transient 429 (Rate Limit) and 503 (Overloaded) responses from LLM APIs.
-- **Provider Fallback**: If the primary LLM provider (e.g. Anthropic Claude) fails after 3 retries or trips the circuit breaker, the request is automatically routed to the secondary provider (e.g. OpenAI GPT-4o) with schema translation.
+The Python AI service sends inference requests to the configured Ollama API endpoint and reports request failures as explicit service errors.
 - **Token Budget Sliding Window**: Source files are dynamically pruned or summarized if total context exceeds the target model's input budget, prioritizing modified code and direct dependencies over peripheral imports.
 
 ---

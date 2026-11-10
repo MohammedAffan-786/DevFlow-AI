@@ -13,6 +13,7 @@ export interface IRepository extends Document {
   healthScore: number;
   scanSettings: {
     autoReviewPullRequests: boolean;
+    autoPublishComments: boolean;
     failCheckOnHighSeverity: boolean;
     generateTestsAutomatically: boolean;
     targetTestFramework: 'jest' | 'vitest' | 'pytest';
@@ -37,6 +38,7 @@ const RepositorySchema = new Schema<IRepository>(
     healthScore: { type: Number, default: 92, min: 0, max: 100 },
     scanSettings: {
       autoReviewPullRequests: { type: Boolean, default: true },
+      autoPublishComments: { type: Boolean, default: false },
       failCheckOnHighSeverity: { type: Boolean, default: true },
       generateTestsAutomatically: { type: Boolean, default: false },
       targetTestFramework: { type: String, enum: ['jest', 'vitest', 'pytest'], default: 'vitest' },

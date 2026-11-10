@@ -15,8 +15,8 @@ This document outlines the step-by-step procedures for deploying DevFlow AI into
 ### External Credentials Required
 1. **GitHub App**:
    - App ID, Client ID, Client Secret, Webhook Secret, and RSA Private Key (`.pem`).
-2. **LLM Provider API Keys**:
-   - Anthropic Claude API Key (`sk-ant-...`) and/or OpenAI API Key (`sk-...`).
+2. **Ollama API**:
+   - `OLAMA_API_KEY`, `OLAMA_BASE_URL` (defaults to `https://ollama.com`), and `OLAMA_MODEL`.
 3. **Domain & DNS**:
    - Registered domain (e.g. `devflow.ai`) with DNS records pointing to your ingress or load balancer.
 
@@ -105,12 +105,54 @@ docker compose -f docker-compose.prod.yml exec api node apps/api/dist/scripts/in
 
 ---
 
-## 6. Frontend Deployment on Vercel (Alternative Cloud Setup)
+## 6. Full-Stack Deployment on Vercel
 
-If deploying the frontend independently on Vercel:
-1. Framework Preset: **Vite**
-2. Root Directory: `apps/web`
-3. Build Command: `pnpm run build`
-4. Output Directory: `dist`
-5. Environment Variables:
-   - `VITE_API_BASE_URL`: `https://api.devflow.ai/api/v1`
+The repository root `vercel.json` configures one Vercel project with the Vite
+web app, Express API, FastAPI AI service, and a background job daemon. Connect
+the repository with the **Root Directory set to `.`**; do not set it to
+`apps/web`. The API is routed under `/api/*`, health probes under `/health/*`,
+and the AI service is private and reached through a Vercel service binding.
+
+Configure these production environment variables in the Vercel project:
+
+- `MONGO_URI`: reachable MongoDB connection string for a managed replica set.
+- `REDIS_URL`: reachable Redis URL (`rediss://` when TLS is required). This is
+  used by the API, cache, and background worker.
+- `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET`: independent random secrets of
+  at least 32 characters.
+- `TOKEN_ENCRYPTION_KEY`: a separate strong secret for encrypting stored GitHub
+  tokens.
+- `AI_SERVICE_INTERNAL_KEY` and `INTERNAL_API_KEY`: the same strong random
+  value; the API/worker use the former and the private AI service uses the
+  latter.
+- `OLAMA_API_KEY`, `OLAMA_BASE_URL`, and `OLAMA_MODEL`.
+- GitHub App settings: `GITHUB_APP_ID`, `GITHUB_CLIENT_ID`,
+  `GITHUB_CLIENT_SECRET`, `GITHUB_WEBHOOK_SECRET`, and `GITHUB_PRIVATE_KEY`.
+- `FRONTEND_URL` and `API_URL`: the public Vercel deployment origin (both are
+  the same origin when using the shared domain).
+
+Set the GitHub OAuth callback URL to
+`<API_URL>/api/v1/auth/github/callback` and the GitHub App webhook URL to
+`<API_URL>/api/v1/webhooks/github`.
+
+Vercel injects `AI_SERVICE_URL` into the API and worker from the private service
+binding; do not set it to localhost. Do not use the Compose `mongodb`/`redis`
+hostnames or localhost URLs in production. Those Compose containers and their
+volumes are not deployed by Vercel, so use managed, externally reachable data
+services. Keep all credentials in Vercel environment settings, not in source
+control.
+
+The job worker is a Vercel Daemon and needs the same MongoDB, Redis, GitHub, and
+AI internal-key environment variables as the API. Its configured instance is
+in `iad1`; align your data-service regions with it where practical.
+
+Vercel Functions do not provide the local Docker socket used by generated-test
+execution. That feature requires a separately hosted, securely isolated Docker
+sandbox; without one, test execution reports that the sandbox is unavailable.
+The deployment configuration does not expose the private AI service or claim
+that Compose databases/sandbox containers run on Vercel.
+
+After adding the environment variables, deploy from the repository root with
+the Vercel CLI or connect the Git repository in Vercel. A live deployment
+cannot complete until the Vercel project is linked and these external service
+credentials are configured.

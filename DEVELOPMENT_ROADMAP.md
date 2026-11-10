@@ -52,9 +52,8 @@ flowchart LR
 - [ ] Code metrics extraction: Function symbol mapping, cyclomatic complexity calculation, cognitive load score.
 - [ ] Intelligent chunking and token budgeter (using `tiktoken` / token estimators) with sliding context window over git diffs.
 - [ ] LLM Client Gateway:
-  - Primary provider: Anthropic Claude 3.5 Sonnet.
-  - Secondary provider: OpenAI GPT-4o.
-  - Exponential backoff retry logic and circuit-breaker fallback.
+  - Ollama API configured through `OLAMA_API_KEY`, `OLAMA_BASE_URL`, and `OLAMA_MODEL`.
+  - Explicit error reporting for failed provider requests.
 - [ ] Pydantic v2 structured output validation for vulnerability and code review schemas.
 - [ ] Post-generation Hallucination Filter: AST cross-check to guarantee reported lines and identifiers exist.
 

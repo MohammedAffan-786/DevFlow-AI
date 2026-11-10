@@ -11,8 +11,10 @@ import crypto from 'crypto';
 import { AnalysisReportModel } from '../models/AnalysisReport';
 import { AnalysisRunModel } from '../models/AnalysisRun';
 import { RepositoryModel } from '../models/Repository';
+import { Finding } from '@devflow/shared';
+import { GitHubService } from './githubService';
 import { processFileTree, ScanInventory } from './fileScanner';
-import { scanFile, fromManifestFindings, Finding } from './securityScanner';
+import { scanFile, fromManifestFindings } from './securityScanner';
 import { reviewFile } from './codeReviewer';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -25,7 +27,7 @@ export interface AnalysisInput {
   fileTree: RawFileNode[];
   /** Pre-fetched file contents keyed by path. */
   fileContents: Record<string, string>;
-  userId: string;
+  userId?: string;
 }
 
 export interface RawFileNode {
@@ -129,7 +131,9 @@ export async function runFullAnalysis(
   // 3. Build scan inventory from file tree
   onProgress?.({ phase: 'SCANNING', filesProcessed: 0, totalFiles: input.fileTree.length });
 
-  const inventory: ScanInventory = processFileTree(input.fileTree);
+  const inventory: ScanInventory = processFileTree(
+    input.fileTree.filter((node) => node.type === 'blob')
+  );
 
   // Inject pre-fetched contents or generate demo content
   for (const file of inventory.analyzedFiles) {
@@ -339,4 +343,48 @@ export function cacheReport(reportId: string, data: Record<string, unknown>): vo
 
 export function getCachedReport(reportId: string): Record<string, unknown> | undefined {
   return reportCache.get(reportId);
+}
+
+export class AnalysisEngine {
+  static runFullAnalysis = runFullAnalysis;
+
+  static async analyzeRepository(input: {
+    repositoryId: string;
+    branch?: string;
+    commitSha?: string;
+    fileTree?: RawFileNode[];
+    fileContents?: Record<string, string>;
+    userId?: string;
+  }): Promise<string> {
+    const repository = await RepositoryModel.findById(input.repositoryId).lean();
+    const branch = input.branch || repository?.defaultBranch || 'main';
+    let fileTree = input.fileTree;
+
+    if (!fileTree) {
+      if (!repository) {
+        throw new Error(`Repository ${input.repositoryId} was not found`);
+      }
+
+      const [owner, repositoryName] = repository.fullName.split('/');
+      const nodes = await GitHubService.getRepositoryTree(
+        owner || '',
+        repositoryName || repository.name,
+        branch
+      );
+      fileTree = nodes.map((node) => ({
+        path: node.path,
+        type: node.type === 'tree' ? 'tree' : 'blob',
+        size: node.size,
+      }));
+    }
+
+    return runFullAnalysis({
+      repositoryId: input.repositoryId,
+      branch,
+      commitSha: input.commitSha,
+      fileTree,
+      fileContents: input.fileContents || {},
+      userId: input.userId,
+    });
+  }
 }

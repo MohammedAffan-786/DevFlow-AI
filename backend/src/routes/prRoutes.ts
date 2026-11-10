@@ -17,7 +17,7 @@ import {
   runPullRequestAnalysis,
   publishReviewToGitHub,
 } from '../services/pullRequestReviewService';
-import { decryptToken } from '../services/githubService';
+import { GitHubService } from '../services/githubService';
 
 const router = Router();
 
@@ -106,21 +106,6 @@ router.get('/:id', optionalAuthenticate, async (req: Request, res: Response) => 
     });
   }
 });
-            status: 'PASSED',
-            totalTests: 6,
-            passedTests: 6,
-            failedTests: 0,
-            durationMs: 142,
-            coveragePercent: 94.2,
-          },
-          publishedToGitHub: false,
-          publishedCommentIds: [],
-        },
-      },
-    });
-  }
-});
-
 // ─── POST /api/v1/pull-requests/:id/review (Trigger AI Review) ───────────────
 
 router.post('/:id/review', optionalAuthenticate, async (req: Request, res: Response) => {
@@ -141,7 +126,7 @@ router.post('/:id/review', optionalAuthenticate, async (req: Request, res: Respo
     if (userId) {
       const user = await UserModel.findById(userId).select('+githubAccessToken').lean();
       const enc = (user as any)?.githubAccessToken;
-      if (enc) githubToken = decryptToken(enc);
+      if (enc) githubToken = GitHubService.decryptToken(enc);
     }
 
     // Run analysis
@@ -202,7 +187,7 @@ router.post('/:id/publish-review', optionalAuthenticate, async (req: Request, re
     if (userId) {
       const user = await UserModel.findById(userId).select('+githubAccessToken').lean();
       const enc = (user as any)?.githubAccessToken;
-      if (enc) githubToken = decryptToken(enc);
+      if (enc) githubToken = GitHubService.decryptToken(enc);
     }
 
     const result = await publishReviewToGitHub(review._id.toString(), githubToken || 'mock_token');

@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { Finding, SeverityLevel, FindingCategory, EvidenceStatus } from '@devflow/shared';
-import { ScannedFile, DependencyAuditFinding } from './fileScanner';
+import { FileScanner, ScannedFile, DependencyAuditFinding } from './fileScanner';
 
 interface SecurityRule {
   id: string;
@@ -237,4 +237,49 @@ export class SecurityScanner {
       owaspCategory: 'A06:2021-Vulnerable-and-Outdated-Components',
     }));
   }
+
+  static scanFiles(files: unknown[]): Finding[] {
+    return files.flatMap((file) => {
+      const scannedFile = toScannedFile(file);
+      return scannedFile ? this.scanFile(scannedFile) : [];
+    });
+  }
+}
+
+function toScannedFile(value: unknown): ScannedFile | undefined {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    !('path' in value) ||
+    typeof value.path !== 'string' ||
+    !('content' in value) ||
+    typeof value.content !== 'string'
+  ) {
+    return undefined;
+  }
+
+  const content = value.content;
+  return {
+    path: value.path,
+    name: value.path.split('/').pop() || '',
+    content,
+    language: FileScanner.detectLanguage(value.path),
+    sizeBytes: Buffer.byteLength(content, 'utf8'),
+    lineCount: content ? content.split('\n').length : 1,
+  };
+}
+
+export function scanFile(filePath: string, content: string): Finding[] {
+  return SecurityScanner.scanFile({
+    path: filePath,
+    name: filePath.split('/').pop() || '',
+    content,
+    language: FileScanner.detectLanguage(filePath),
+    sizeBytes: Buffer.byteLength(content, 'utf8'),
+    lineCount: content ? content.split('\n').length : 1,
+  });
+}
+
+export function fromManifestFindings(manifestFindings: DependencyAuditFinding[]): Finding[] {
+  return SecurityScanner.fromManifestFindings(manifestFindings);
 }

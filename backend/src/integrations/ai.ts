@@ -2,7 +2,7 @@ import { config } from '../config/index.js';
 
 export class AIIntegration {
   public static isConfigured(): boolean {
-    return Boolean(config.aiService.anthropicKey || config.aiService.openaiKey);
+    return Boolean(config.aiService.olamaKey);
   }
 
   public static async requestReview(prompt: string, context: Record<string, any>) {

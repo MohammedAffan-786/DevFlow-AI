@@ -122,10 +122,10 @@ export async function runAIValidationTests(): Promise<{ name: string; passed: bo
 
   // Test 3: Audit Notice - External LLM Independence
   try {
-    const hasLiveKeys = !!(process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY);
+    const hasLiveKeys = !!process.env.OLAMA_API_KEY;
     console.log(`[AI Test] Active mode: ${hasLiveKeys ? 'LIVE_LLM_KEY_PRESENT' : 'MOCKED_DETERMINISTIC'}`);
     if (!hasLiveKeys) {
-      console.log('[AI Test] [AUDIT NOTE] Schema validation passed via contract testing. Live calls require active ANTHROPIC_API_KEY or OPENAI_API_KEY.');
+      console.log('[AI Test] [AUDIT NOTE] Schema validation passed via contract testing. Live calls require OLAMA_API_KEY.');
     }
 
     results.push({ name: 'AI Validation: Deterministic schema audit & mock notice verified', passed: true });

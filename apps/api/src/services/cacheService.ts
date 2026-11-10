@@ -8,19 +8,21 @@ export class CacheService {
   public static init() {
     if (this.isInitialized) return;
 
-    const redisHost = process.env.REDIS_HOST || '127.0.0.1';
-    const redisPort = parseInt(process.env.REDIS_PORT || '6379', 10);
-    const redisPassword = process.env.REDIS_PASSWORD || undefined;
-
     try {
-      this.redis = new Redis({
-        host: redisHost,
-        port: redisPort,
-        password: redisPassword,
+      const redisUrl = process.env.REDIS_URL;
+      const redisOptions = {
         lazyConnect: true,
         maxRetriesPerRequest: 1,
         retryStrategy: () => null, // Resilient fallback to memory cache if Redis offline
-      });
+      };
+      this.redis = redisUrl
+        ? new Redis(redisUrl, redisOptions)
+        : new Redis({
+            ...redisOptions,
+            host: process.env.REDIS_HOST || '127.0.0.1',
+            port: parseInt(process.env.REDIS_PORT || '6379', 10),
+            password: process.env.REDIS_PASSWORD || undefined,
+          });
 
       this.redis.connect().catch(() => {
         // Silent catch for resilient in-memory mode

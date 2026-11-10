@@ -198,6 +198,7 @@ export class FileScanner {
             });
           }
         }
+
       }
     } catch {
       // Ignore JSON parse errors in malformed manifests
@@ -233,6 +234,7 @@ export class FileScanner {
           });
         }
       }
+
     }
     return findings;
   }
@@ -265,4 +267,10 @@ export class FileScanner {
         return 'Plain Text';
     }
   }
+}
+
+export function processFileTree(
+  rawFiles: Array<{ path: string; content?: string; size?: number }>
+): ScanInventory {
+  return FileScanner.processFileTree(rawFiles);
 }

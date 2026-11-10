@@ -171,8 +171,9 @@ export class DeveloperAnalyticsService {
         const allFindings = [...(latestReport.securityFindings || []), ...(latestReport.codeReviewFindings || [])];
 
         for (const f of allFindings) {
-          const path = f.filePath || 'src/index.ts';
-          const existing = fileMap.get(path) || { total: 0, critical: 0, high: 0, category: f.category || 'SECURITY' };
+          const path = typeof f.filePath === 'string' ? f.filePath : 'src/index.ts';
+          const category = typeof f.category === 'string' ? f.category : 'SECURITY';
+          const existing = fileMap.get(path) || { total: 0, critical: 0, high: 0, category };
           existing.total += 1;
           if (f.severity === 'CRITICAL') existing.critical += 1;
           if (f.severity === 'HIGH') existing.high += 1;

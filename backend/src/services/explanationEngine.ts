@@ -74,11 +74,13 @@ export class ExplanationEngine {
         name: 'Request / Context Payload',
         type: 'Domain Object or Typed Interface',
         description: 'Input arguments carrying operational parameters, credentials, or entity IDs.',
+        direction: 'INPUT',
       },
       {
         name: 'Return Value',
         type: 'Structured DTO / Promise',
         description: 'Asynchronous Promise resolving to validated domain entities or throwing structured application errors.',
+        direction: 'OUTPUT',
       },
     ];
 

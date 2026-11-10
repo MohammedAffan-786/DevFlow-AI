@@ -338,10 +338,10 @@ export class QueueService {
       // Notification
       if (record.userId) {
         await NotificationService.notifyAnalysisCompleted(
-          record.userId.toString(),
           record.repositoryId?.toString() || 'Repository',
+          typeof result?.overallScore === 'number' ? result.overallScore : 85,
           jobId,
-          result?.overallScore || 85
+          record.userId.toString()
         );
       }
     } catch (err: any) {
@@ -386,7 +386,7 @@ export class QueueService {
         });
         await this.updateProgress(jobId, 80, 'Aggregating security and quality scores');
         await this.updateProgress(jobId, 100, 'Analysis completed');
-        return result;
+        return { reportId: result };
       }
 
       case 'AI_CODE_REVIEW': {
@@ -491,10 +491,9 @@ export class QueueService {
       // Dispatch alert notification
       if (record.userId) {
         await NotificationService.notifyJobFailed(
-          record.userId.toString(),
-          jobId,
-          record.type,
-          err?.message || 'Worker processing error'
+          `${record.type} (${jobId})`,
+          err?.message || 'Worker processing error',
+          record.userId.toString()
         );
       }
 

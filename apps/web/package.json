@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "DevFlow AI Web Dashboard and Developer Console",
   "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "vite",
     "build": "pnpm --filter @devflow/shared build && tsc && vite build",

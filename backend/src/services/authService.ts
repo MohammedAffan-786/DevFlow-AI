@@ -109,7 +109,7 @@ export class AuthService {
         id: org._id.toString(),
         name: org.name,
         slug: org.slug,
-        role: membership.role,
+        role: membership.role === 'DEVELOPER' ? 'MEMBER' : membership.role,
       };
     }
 
@@ -124,5 +124,91 @@ export class AuthService {
       githubConnected: !!user.githubId,
       organization: orgInfo,
     };
+  }
+
+  static async register(input: {
+    email: string;
+    password: string;
+    name?: string;
+    organizationName?: string;
+  }): Promise<{ user: UserDTO; accessToken: string; refreshToken: string }> {
+    const email = input.email.trim().toLowerCase();
+    if (await UserModel.exists({ email })) {
+      throw Object.assign(new Error('An account with this email already exists'), { status: 409 });
+    }
+
+    const usernameBase =
+      email
+        .split('@')[0]
+        .replace(/[^a-z0-9_]/g, '_')
+        .replace(/^_+|_+$/g, '') || 'user';
+    let username = usernameBase;
+    let suffix = 1;
+    while (await UserModel.exists({ username })) {
+      username = `${usernameBase}${suffix}`;
+      suffix += 1;
+    }
+
+    const displayName = input.name?.trim() || username;
+    const user = await UserModel.create({
+      email,
+      username,
+      displayName,
+      passwordHash: this.hashPassword(input.password),
+      role: 'USER',
+    });
+
+    const organizationName = input.organizationName?.trim() || `${displayName}'s Organization`;
+    const slugBase =
+      organizationName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'organization';
+    let slug = slugBase;
+    suffix = 1;
+    while (await OrganizationModel.exists({ slug })) {
+      slug = `${slugBase}-${suffix}`;
+      suffix += 1;
+    }
+
+    const organization = await OrganizationModel.create({
+      name: organizationName,
+      slug,
+      billingEmail: email,
+    });
+    await UserMembershipModel.create({
+      userId: user._id,
+      organizationId: organization._id,
+      role: 'OWNER',
+    });
+
+    return {
+      user: await this.formatUserDTO(user),
+      accessToken: this.generateAccessToken(user),
+      refreshToken: this.generateRefreshToken(user),
+    };
+  }
+
+  static async login(
+    email: string,
+    password: string
+  ): Promise<{ user: UserDTO; accessToken: string; refreshToken: string }> {
+    const user = await UserModel.findOne({ email: email.trim().toLowerCase() }).select('+passwordHash');
+    if (!user || !this.verifyPassword(password, user.passwordHash)) {
+      throw Object.assign(new Error('Invalid email or password'), { status: 401 });
+    }
+
+    user.lastLoginAt = new Date();
+    await user.save();
+    return {
+      user: await this.formatUserDTO(user),
+      accessToken: this.generateAccessToken(user),
+      refreshToken: this.generateRefreshToken(user),
+    };
+  }
+
+  static async getProfile(userId: string): Promise<UserDTO> {
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      throw Object.assign(new Error('User not found'), { status: 404 });
+    }
+    return this.formatUserDTO(user);
   }
 }

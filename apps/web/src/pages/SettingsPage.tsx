@@ -35,9 +35,10 @@ export function SettingsPage() {
   const [notifyCritical, setNotifyCritical] = useState(true);
   const [notifyPRReviews, setNotifyPRReviews] = useState(true);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const webhookUrl = `${window.location.origin}/api/v1/webhooks/github`;
 
   const handleCopyWebhook = () => {
-    navigator.clipboard.writeText('https://api.devflow.ai/api/v1/webhooks/github');
+    navigator.clipboard.writeText(webhookUrl);
     setCopiedSecret(true);
     setTimeout(() => setCopiedSecret(false), 2000);
   };
@@ -115,7 +116,7 @@ export function SettingsPage() {
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    value="https://api.devflow.ai/api/v1/webhooks/github"
+                    value={webhookUrl}
                     readOnly
                     className="flex-1 font-mono text-xs rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 px-3.5 py-2 text-slate-600 dark:text-slate-400 select-all"
                   />
