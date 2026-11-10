@@ -6,8 +6,8 @@ import { UserMembershipModel } from '../models/UserMembership';
 import { OrganizationModel } from '../models/Organization';
 import { UserDTO } from '@devflow/shared';
 
-const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'devflow_super_secret_access_jwt_key_256bit!';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'devflow_super_secret_refresh_jwt_key_256bit!';
+const JWT_ACCESS_SECRET = () => process.env.JWT_ACCESS_SECRET || 'devflow_super_secret_access_jwt_key_256bit!';
+const JWT_REFRESH_SECRET = () => process.env.JWT_REFRESH_SECRET || 'devflow_super_secret_refresh_jwt_key_256bit!';
 
 export interface TokenPayload {
   userId: string;
@@ -45,7 +45,7 @@ export class AuthService {
       email: user.email,
       role: user.role,
     };
-    return jwt.sign(payload, JWT_ACCESS_SECRET, { expiresIn: '15m' });
+    return jwt.sign(payload, JWT_ACCESS_SECRET(), { expiresIn: '15m' });
   }
 
   static generateRefreshToken(user: IUser): string {
@@ -54,12 +54,12 @@ export class AuthService {
       email: user.email,
       role: user.role,
     };
-    return jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: '7d' });
+    return jwt.sign(payload, JWT_REFRESH_SECRET(), { expiresIn: '7d' });
   }
 
   static verifyAccessToken(token: string): TokenPayload | null {
     try {
-      return jwt.verify(token, JWT_ACCESS_SECRET) as TokenPayload;
+      return jwt.verify(token, JWT_ACCESS_SECRET()) as TokenPayload;
     } catch {
       return null;
     }
@@ -67,7 +67,7 @@ export class AuthService {
 
   static verifyRefreshToken(token: string): TokenPayload | null {
     try {
-      return jwt.verify(token, JWT_REFRESH_SECRET) as TokenPayload;
+      return jwt.verify(token, JWT_REFRESH_SECRET()) as TokenPayload;
     } catch {
       return null;
     }

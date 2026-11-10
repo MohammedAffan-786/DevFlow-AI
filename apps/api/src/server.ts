@@ -16,14 +16,6 @@ dotenv.config();
 // Workspace scripts run from apps/api; also load the monorepo root .env.
 dotenv.config({ path: '../../.env' });
 
-// Production Security Invariant Checks
-if (process.env.NODE_ENV === 'production') {
-  if (!process.env.JWT_ACCESS_SECRET || process.env.JWT_ACCESS_SECRET.length < 32) {
-    console.error('FATAL DEVSECOPS AUDIT: JWT_ACCESS_SECRET must be set and >= 32 characters in production.');
-    process.exit(1);
-  }
-}
-
 const app = express();
 const PORT = process.env.PORT || 4000;
 const isVercel = Boolean(process.env.VERCEL);
@@ -122,6 +114,15 @@ app.get('/health/live', (_req: Request, res: Response) => {
 
 app.get('/health/ready', async (_req: Request, res: Response) => {
   if (isVercel) {
+    const missingConfiguration = getMissingProductionConfiguration();
+    if (missingConfiguration.length > 0) {
+      return res.status(503).json({
+        status: 'unready',
+        reason: 'Required Vercel environment variables are missing or invalid.',
+        missingConfiguration,
+      });
+    }
+
     try {
       await bootstrap();
     } catch {
@@ -158,13 +159,33 @@ app.get('/health/metrics', (_req: Request, res: Response) => {
   });
 });
 
-if (isVercel) {
-  app.use(async (_req: Request, _res: Response, next: NextFunction) => {
+if (isVercel || process.env.NODE_ENV === 'production') {
+  app.use(async (req: Request, res: Response, next: NextFunction) => {
+    const missingConfiguration = getMissingProductionConfiguration();
+    if (missingConfiguration.length > 0) {
+      return res.status(503).contentType('application/problem+json').json({
+        type: 'https://api.devflow.ai/errors/service-configuration',
+        title: 'API Configuration Incomplete',
+        status: 503,
+        detail: 'Configure the listed environment variables in Vercel Project Settings, then redeploy.',
+        instance: req.originalUrl,
+        missingConfiguration,
+      });
+    }
+
     try {
       await bootstrap();
       next();
     } catch (error) {
-      next(error);
+      console.error('[DevFlow API] Vercel request initialization failed:', error);
+      res.status(503).contentType('application/problem+json').json({
+        type: 'https://api.devflow.ai/errors/service-unavailable',
+        title: 'API Service Unavailable',
+        status: 503,
+        detail: 'The API could not connect to its database. Verify MONGO_URI and the database network allowlist in Vercel settings.',
+        instance: req.originalUrl,
+        correlationId: res.locals.correlationId,
+      });
     }
   });
 }
@@ -211,8 +232,21 @@ app.use(
 async function bootstrap() {
   if (bootstrapPromise) return bootstrapPromise;
 
-  bootstrapPromise = initializeApi();
+  bootstrapPromise = initializeApi().catch((error: unknown) => {
+    bootstrapPromise = null;
+    throw error;
+  });
   return bootstrapPromise;
+}
+
+function getMissingProductionConfiguration(): string[] {
+  const missing: string[] = [];
+  for (const name of ['JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET']) {
+    const value = process.env[name];
+    if (!value || value.length < 32) missing.push(`${name} (at least 32 characters)`);
+  }
+  if (!process.env.MONGO_URI) missing.push('MONGO_URI');
+  return missing;
 }
 
 async function initializeApi(): Promise<void> {
