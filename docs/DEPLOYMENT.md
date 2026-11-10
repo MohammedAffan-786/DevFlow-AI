@@ -110,8 +110,11 @@ docker compose -f docker-compose.prod.yml exec api node apps/api/dist/scripts/in
 The repository root `vercel.json` configures one Vercel project with the Vite
 web app, Express API, FastAPI AI service, and a background job daemon. Connect
 the repository with the **Root Directory set to `.`**; do not set it to
-`apps/web`. The API is routed under `/api/*`, health probes under `/health/*`,
-and the AI service is private and reached through a Vercel service binding.
+`apps/web`. The API service also uses the repository root so Vercel includes
+pnpm's workspace dependency store when packaging the API function; keep its
+entrypoint pointed at `apps/api/src/server.ts`. The API is routed under
+`/api/*`, health probes under `/health/*`, and the AI service is private and
+reached through a Vercel service binding.
 
 Configure these production environment variables in the Vercel project:
 
