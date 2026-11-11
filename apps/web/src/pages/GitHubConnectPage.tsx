@@ -252,7 +252,7 @@ export function GitHubConnectPage() {
       setImportedRepoId(repoId);
 
       // 2. Trigger full analysis
-      const analysisRes = await apiRequest<{ reportId: string }>('/analysis/engine/full', {
+      await apiRequest<{ jobId: string; status: string }>('/analysis/engine/full', {
         method: 'POST',
         body: JSON.stringify({
           repositoryId: repoId,
@@ -261,8 +261,7 @@ export function GitHubConnectPage() {
         }),
       });
 
-      // 3. Navigate directly to report
-      navigate(`/analysis/reports/${analysisRes.reportId}`);
+      navigate('/jobs');
     } catch (err: any) {
       setError(err?.message || 'Analysis could not be started.');
     } finally {

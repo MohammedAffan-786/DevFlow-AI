@@ -255,7 +255,8 @@ Visit `http://localhost:5173` to access the DevFlow AI Dashboard.
 | `NODE_ENV` | Yes | `development` \| `production` | Node runtime environment. |
 | `PORT` | No | `4000` | Port for Express API server. |
 | `MONGO_URI` | Yes | `mongodb://localhost:27017/devflow?replicaSet=rs0` | Connection string for MongoDB. |
-| `REDIS_URL` | Yes | `redis://localhost:6379` | Redis broker connection URI. |
+| `REDIS_URL` | Production | `redis://localhost:6379` | Redis broker connection URI. Required on Vercel unless a remote `REDIS_HOST` is configured; the API and job worker must use the same Redis instance. |
+| `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` | No | `localhost` / `6379` | Alternative Redis connection settings for container deployments and remote-host configurations. |
 | `JWT_ACCESS_SECRET` | Yes | High-entropy string (256-bit) | Secret for short-lived access tokens. |
 | `JWT_REFRESH_SECRET` | Yes | High-entropy string (256-bit) | Secret for long-lived refresh tokens. |
 | `GITHUB_APP_ID` | Yes | String (e.g. `123456`) | GitHub App identifier. |

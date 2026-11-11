@@ -4,7 +4,7 @@
     "web": {
       "root": "apps/web",
       "framework": "vite",
-      "installCommand": "pnpm install --filter @devflow/web... --frozen-lockfile",
+      "installCommand": "pnpm install --filter @devflow/web... --frozen-lockfile --force",
       "buildCommand": "pnpm --filter @devflow/shared build && pnpm --filter @devflow/web build",
       "outputDirectory": "dist",
       "rewrites": [
@@ -18,7 +18,7 @@
       "root": ".",
       "framework": "express",
       "entrypoint": "apps/api/src/server.ts",
-      "installCommand": "pnpm install --filter @devflow/api... --frozen-lockfile",
+      "installCommand": "pnpm install --filter @devflow/api... --frozen-lockfile --force",
       "buildCommand": "pnpm --filter @devflow/shared build && pnpm --filter @devflow/api build",
       "bindings": [
         {

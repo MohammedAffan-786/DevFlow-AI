@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -6,44 +6,35 @@ import { AuthProvider } from './context/AuthContext';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { AuthLayout } from './components/layout/AuthLayout';
 
-// Public & Auth Pages
-import { LandingPage } from './pages/LandingPage';
-import { LoginPage } from './pages/LoginPage';
-import { RegisterPage } from './pages/RegisterPage';
-import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
-import { ResetPasswordPage } from './pages/ResetPasswordPage';
-
-// Platform Core Pages
-import { DashboardPage } from './pages/DashboardPage';
-import { RepositoriesPage } from './pages/RepositoriesPage';
-import { ConnectRepoPage } from './pages/ConnectRepoPage';
-import { GitHubConnectPage } from './pages/GitHubConnectPage';
-import { RepoDetailPage } from './pages/RepoDetailPage';
-import { RepoAnalysisPage } from './pages/RepoAnalysisPage';
-import { PullRequestsPage } from './pages/PullRequestsPage';
-import { HistoryPage } from './pages/HistoryPage';
-import { DetailedReportPage } from './pages/DetailedReportPage';
-import { AnalysisReportPage } from './pages/AnalysisReportPage';
-import { ComparisonPage } from './pages/ComparisonPage';
-import { DeveloperAnalyticsPage } from './pages/DeveloperAnalyticsPage';
-
-// AI Intelligence & Security Pages
-import { CodeReviewPage } from './pages/CodeReviewPage';
-import { BugDetectionPage } from './pages/BugDetectionPage';
-import { SecurityPage } from './pages/SecurityPage';
-import { ComplexityPage } from './pages/ComplexityPage';
-import { ExplainPage } from './pages/ExplainPage';
-
-// Testing & Sandboxed Execution Pages
-import { TestGenerationPage } from './pages/TestGenerationPage';
-import { TestExecutionPage } from './pages/TestExecutionPage';
-
-// Workspace & Management Pages
-import { NotificationsPage } from './pages/NotificationsPage';
-import { ProfilePage } from './pages/ProfilePage';
-import { OrganizationPage } from './pages/OrganizationPage';
-import { SettingsPage } from './pages/SettingsPage';
-import { BackgroundJobsPage } from './pages/BackgroundJobsPage';
+const LandingPage = lazy(() => import('./pages/LandingPage').then(({ LandingPage }) => ({ default: LandingPage })));
+const LoginPage = lazy(() => import('./pages/LoginPage').then(({ LoginPage }) => ({ default: LoginPage })));
+const RegisterPage = lazy(() => import('./pages/RegisterPage').then(({ RegisterPage }) => ({ default: RegisterPage })));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage').then(({ ForgotPasswordPage }) => ({ default: ForgotPasswordPage })));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then(({ ResetPasswordPage }) => ({ default: ResetPasswordPage })));
+const DashboardPage = lazy(() => import('./pages/DashboardPage').then(({ DashboardPage }) => ({ default: DashboardPage })));
+const RepositoriesPage = lazy(() => import('./pages/RepositoriesPage').then(({ RepositoriesPage }) => ({ default: RepositoriesPage })));
+const ConnectRepoPage = lazy(() => import('./pages/ConnectRepoPage').then(({ ConnectRepoPage }) => ({ default: ConnectRepoPage })));
+const GitHubConnectPage = lazy(() => import('./pages/GitHubConnectPage').then(({ GitHubConnectPage }) => ({ default: GitHubConnectPage })));
+const RepoDetailPage = lazy(() => import('./pages/RepoDetailPage').then(({ RepoDetailPage }) => ({ default: RepoDetailPage })));
+const RepoAnalysisPage = lazy(() => import('./pages/RepoAnalysisPage').then(({ RepoAnalysisPage }) => ({ default: RepoAnalysisPage })));
+const PullRequestsPage = lazy(() => import('./pages/PullRequestsPage').then(({ PullRequestsPage }) => ({ default: PullRequestsPage })));
+const HistoryPage = lazy(() => import('./pages/HistoryPage').then(({ HistoryPage }) => ({ default: HistoryPage })));
+const DetailedReportPage = lazy(() => import('./pages/DetailedReportPage').then(({ DetailedReportPage }) => ({ default: DetailedReportPage })));
+const AnalysisReportPage = lazy(() => import('./pages/AnalysisReportPage').then(({ AnalysisReportPage }) => ({ default: AnalysisReportPage })));
+const ComparisonPage = lazy(() => import('./pages/ComparisonPage').then(({ ComparisonPage }) => ({ default: ComparisonPage })));
+const DeveloperAnalyticsPage = lazy(() => import('./pages/DeveloperAnalyticsPage').then(({ DeveloperAnalyticsPage }) => ({ default: DeveloperAnalyticsPage })));
+const CodeReviewPage = lazy(() => import('./pages/CodeReviewPage').then(({ CodeReviewPage }) => ({ default: CodeReviewPage })));
+const BugDetectionPage = lazy(() => import('./pages/BugDetectionPage').then(({ BugDetectionPage }) => ({ default: BugDetectionPage })));
+const SecurityPage = lazy(() => import('./pages/SecurityPage').then(({ SecurityPage }) => ({ default: SecurityPage })));
+const ComplexityPage = lazy(() => import('./pages/ComplexityPage').then(({ ComplexityPage }) => ({ default: ComplexityPage })));
+const ExplainPage = lazy(() => import('./pages/ExplainPage').then(({ ExplainPage }) => ({ default: ExplainPage })));
+const TestGenerationPage = lazy(() => import('./pages/TestGenerationPage').then(({ TestGenerationPage }) => ({ default: TestGenerationPage })));
+const TestExecutionPage = lazy(() => import('./pages/TestExecutionPage').then(({ TestExecutionPage }) => ({ default: TestExecutionPage })));
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage').then(({ NotificationsPage }) => ({ default: NotificationsPage })));
+const ProfilePage = lazy(() => import('./pages/ProfilePage').then(({ ProfilePage }) => ({ default: ProfilePage })));
+const OrganizationPage = lazy(() => import('./pages/OrganizationPage').then(({ OrganizationPage }) => ({ default: OrganizationPage })));
+const SettingsPage = lazy(() => import('./pages/SettingsPage').then(({ SettingsPage }) => ({ default: SettingsPage })));
+const BackgroundJobsPage = lazy(() => import('./pages/BackgroundJobsPage').then(({ BackgroundJobsPage }) => ({ default: BackgroundJobsPage })));
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -60,7 +51,8 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
-          <Routes>
+        <Suspense fallback={<div className="p-8 text-sm text-slate-500">Loading page…</div>}>
+        <Routes>
             {/* Landing Page */}
             <Route path="/" element={<LandingPage />} />
 
@@ -115,6 +107,7 @@ export default function App() {
             {/* Fallback to Dashboard */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
+        </Suspense>
         </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>

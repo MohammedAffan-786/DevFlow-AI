@@ -114,7 +114,9 @@ the repository with the **Root Directory set to `.`**; do not set it to
 pnpm's workspace dependency store when packaging the API function; keep its
 entrypoint pointed at `apps/api/src/server.ts`. The API is routed under
 `/api/*`, health probes under `/health/*`, and the AI service is private and
-reached through a Vercel service binding.
+reached through a Vercel service binding. The service install commands use
+`pnpm install --force` to relink workspace dependencies if a deployment cache
+was created with a different pnpm store.
 
 Configure these production environment variables in the Vercel project:
 

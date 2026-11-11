@@ -74,27 +74,11 @@ export function RepoAnalysisPage() {
     setAnalysisError(null);
     setCompletedReportId(null);
     setIsAnalyzing(true);
-    setProgressPercent(10);
-    setCurrentPhase('File Discovery & Filtering (excluding node_modules, .git, etc.)...');
-
-    const phases = [
-      { text: 'File Discovery & Filtering (excluding node_modules, .git, dist)...', pct: 25, delay: 600 },
-      { text: 'Manifest & Dependency Vulnerability Inspection (CVE checks)...', pct: 45, delay: 800 },
-      { text: 'Deterministic Security & Secret Detection (OWASP rules)...', pct: 70, delay: 900 },
-      { text: 'AI-Assisted Code Quality & Logic Review...', pct: 85, delay: 800 },
-      { text: 'Computing Quality Scores & Persisting Report to MongoDB...', pct: 98, delay: 600 },
-    ];
+    setProgressPercent(0);
+    setCurrentPhase('Submitting analysis job...');
 
     try {
-      // Simulate live phase progression
-      for (const p of phases) {
-        await new Promise((r) => setTimeout(r, p.delay));
-        setCurrentPhase(p.text);
-        setProgressPercent(p.pct);
-      }
-
-      // Trigger backend analysis
-      const res = await apiRequest<{ reportId: string }>('/analysis/engine/full', {
+      await apiRequest<{ jobId: string; status: string }>('/analysis/engine/full', {
         method: 'POST',
         body: JSON.stringify({
           repositoryId: id || repo?._id || 'mock_repo_id',
@@ -103,9 +87,7 @@ export function RepoAnalysisPage() {
         }),
       });
 
-      setProgressPercent(100);
-      setCurrentPhase('Analysis complete!');
-      setCompletedReportId(res.reportId);
+      navigate('/jobs');
     } catch (err: any) {
       setAnalysisError(err?.message || 'Analysis failed. Please try again.');
       setCurrentPhase('Analysis failed.');

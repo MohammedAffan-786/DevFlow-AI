@@ -138,7 +138,15 @@ router.post(
       });
     } catch (err) {
       console.error('[AnalysisEngineRoutes] runFullAnalysis error:', err);
-      return res.status(500).json({ success: false, error: 'Failed to dispatch analysis job — please retry' });
+      const errorMessage = err instanceof Error ? err.message : '';
+      const isQueueUnavailable =
+        /Configure REDIS_|background queue|Redis connection|BullMQ/i.test(errorMessage);
+      return res.status(isQueueUnavailable ? 503 : 500).json({
+        success: false,
+        error: isQueueUnavailable
+          ? 'Analysis queue is unavailable. Verify REDIS_URL or REDIS_HOST and confirm the job worker uses the same Redis instance.'
+          : 'Failed to dispatch analysis job — please retry',
+      });
     }
   }
 );

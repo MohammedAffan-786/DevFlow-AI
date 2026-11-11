@@ -1,3 +1,5 @@
+import { isRemoteRedisHost } from '../src/services/queueService.ts';
+
 export interface TestJob {
   jobId: string;
   type: string;
@@ -66,6 +68,18 @@ export async function runQueueTests(): Promise<{ name: string; passed: boolean; 
   const results: { name: string; passed: boolean; error?: string }[] = [];
 
   const engine = new MockQueueEngine();
+
+  // Test 0: Vercel requires a remote Redis host if a URL is not supplied.
+  try {
+    if (!isRemoteRedisHost('redis.example.com') || isRemoteRedisHost('localhost') ||
+      isRemoteRedisHost('127.0.0.1') || isRemoteRedisHost()) {
+      throw new Error('Remote Redis host validation is incorrect');
+    }
+
+    results.push({ name: 'Queue Processing: Accept remote Redis host configuration', passed: true });
+  } catch (err: any) {
+    results.push({ name: 'Queue Processing: Accept remote Redis host configuration', passed: false, error: err.message });
+  }
 
   // Test 1: Priority Queue Enqueue
   try {

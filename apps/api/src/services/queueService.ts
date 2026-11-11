@@ -22,6 +22,11 @@ export interface EnqueueJobOptions {
   maxAttempts?: number;
 }
 
+export function isRemoteRedisHost(host?: string): boolean {
+  const normalizedHost = host?.trim().toLowerCase();
+  return Boolean(normalizedHost && !['localhost', '127.0.0.1', '::1'].includes(normalizedHost));
+}
+
 export class QueueService {
   private static redisConnection: Redis | null = null;
   private static mainQueue: Queue | null = null;
@@ -37,8 +42,9 @@ export class QueueService {
   public static async init(startWorker = !this.isVercel): Promise<void> {
     if (!this.isInitialized) {
       const redisUrl = process.env.REDIS_URL;
-      if (this.isVercel && !redisUrl) {
-        throw new Error('REDIS_URL must be configured for Vercel background jobs.');
+      const redisHost = process.env.REDIS_HOST;
+      if (this.isVercel && !redisUrl && !isRemoteRedisHost(redisHost)) {
+        throw new Error('Configure REDIS_URL or a remote REDIS_HOST for Vercel background jobs.');
       }
 
       const redisOptions = {
@@ -56,7 +62,7 @@ export class QueueService {
           ? new Redis(redisUrl, redisOptions)
           : new Redis({
               ...redisOptions,
-              host: process.env.REDIS_HOST || '127.0.0.1',
+              host: redisHost || '127.0.0.1',
               port: parseInt(process.env.REDIS_PORT || '6379', 10),
               password: process.env.REDIS_PASSWORD || undefined,
             });
